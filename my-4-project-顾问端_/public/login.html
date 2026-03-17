@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #f5f5f5;
+            padding: 16px;
+        }
+        .greeting {
+            width: 100%;
+            max-width: 360px;
+            margin-bottom: 20px;
+            padding: 14px 20px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #1a1a1a;
+            letter-spacing: 0.04em;
+            background: linear-gradient(135deg, rgba(24,144,255,0.08) 0%, rgba(114,46,209,0.05) 100%);
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .switch-role {
+            margin-top: 8px;
+            font-size: 13px;
+        }
+        .switch-role a { color: #1890ff; text-decoration: none; }
+        .switch-role a:hover { text-decoration: underline; }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 32px;
+            width: 100%;
+            max-width: 360px;
+        }
+        h1 { margin: 0 0 24px 0; font-size: 24px; font-weight: 600; color: #333; text-align: center; }
+        .tip {
+            margin-bottom: 16px;
+            padding: 10px 12px;
+            font-size: 14px;
+            color: #52c41a;
+            background: #f6ffed;
+            border-radius: 6px;
+        }
+        .field { margin-bottom: 16px; }
+        .pwd-input-wrap {
+            display: flex;
+            align-items: center;
+            height: 44px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #fff;
+            overflow: hidden;
+        }
+        .pwd-input-wrap:focus-within { border-color: #1890ff; }
+        .pwd-input-wrap input {
+            flex: 1;
+            min-width: 0;
+            height: 100%;
+            border: none;
+            padding: 0 12px;
+            font-size: 16px;
+            outline: none;
+        }
+        .pwd-input-wrap .pwd-toggle {
+            width: 40px;
+            height: 100%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-left: 1px solid #eee;
+            padding: 0;
+            cursor: pointer;
+            font-size: 16px;
+            color: #888;
+        }
+        .pwd-input-wrap .pwd-toggle:hover { color: #333; background: #f5f5f5; }
+        label { display: block; margin-bottom: 6px; font-size: 14px; color: #555; }
+        input {
+            width: 100%;
+            height: 44px;
+            padding: 0 12px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            outline: none;
+        }
+        input:focus { border-color: #1890ff; }
+        button {
+            width: 100%;
+            height: 44px;
+            margin-top: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #fff;
+            background: #1890ff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: #40a9ff; }
+        button:disabled { background: #bbb; cursor: not-allowed; }
+        .footer { margin-top: 20px; text-align: center; font-size: 14px; color: #666; }
+        .footer a { color: #1890ff; text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="greeting" id="greeting">尊敬的客户您好</div>
+    <div class="card">
+        <h1>登录</h1>
+        <p class="switch-role"><a href="index.html">切换身份</a></p>
+        <div id="expiredTip" class="tip" style="display: none; color: #e74c3c; background: #fff2f0;">登录已过期，请重新登录</div>
+        <form id="loginForm">
+            <div class="field">
+                <label for="phone">手机号</label>
+                <input type="tel" id="phone" name="phone" placeholder="请输入手机号" maxlength="11" required>
+            </div>
+            <div class="field">
+                <label for="password">密码</label>
+                <div class="pwd-input-wrap">
+                    <input type="password" id="password" name="password" placeholder="请输入密码" required>
+                    <button type="button" class="pwd-toggle" id="pwdToggle" title="显示/隐藏密码">👁</button>
+                </div>
+            </div>
+            <button type="submit" id="submitBtn">登录</button>
+        </form>
+        <p class="footer">还没有账号？<a href="register.html">去注册</a></p>
+    </div>
+    <script>
+        (function setGreeting() {
+            var role = localStorage.getItem('role') || 'user';
+            document.getElementById('greeting').textContent = role === 'consultant' ? '尊敬的顾问您好' : '尊敬的客户您好';
+        })();
+        var params = new URLSearchParams(location.search);
+        if (params.get('expired') === '1') {
+            document.getElementById('expiredTip').style.display = 'block';
+        }
+
+        document.getElementById('pwdToggle').addEventListener('click', function () {
+            var el = document.getElementById('password');
+            var btn = this;
+            if (el.type === 'password') {
+                el.type = 'text';
+                btn.textContent = '🙈';
+            } else {
+                el.type = 'password';
+                btn.textContent = '👁';
+            }
+        });
+
+        var API_BASE = window.location.origin;
+        document.getElementById('loginForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            var btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = '登录中…';
+            var role = localStorage.getItem('role') || 'user';
+            var data = {
+                phone: document.getElementById('phone').value.trim(),
+                password: document.getElementById('password').value,
+                role: role
+            };
+            try {
+                var res = await fetch(API_BASE + '/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                var result = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('token', result.token);
+                    var tip = document.getElementById('expiredTip');
+                    tip.style.display = 'block';
+                    tip.style.color = '#1890ff';
+                    tip.style.background = '#e6f7ff';
+                    tip.textContent = '欢迎，' + (result.user && result.user.phone ? result.user.phone : '用户') + '，正在跳转…';
+                    document.getElementById('loginForm').style.display = 'none';
+                    document.querySelector('.footer').style.display = 'none';
+                    setTimeout(function () {
+                        window.location.href = 'dashboard.html';
+                    }, 800);
+                } else {
+                    alert(result.message || '登录失败');
+                }
+            } catch (err) {
+                alert('网络错误，请检查后端是否运行');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '登录';
+            }
+        });
+    </script>
+</body>
+</html>

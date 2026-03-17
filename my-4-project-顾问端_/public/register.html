@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: #f5f5f5;
+            padding: 16px;
+        }
+        .greeting {
+            width: 100%;
+            max-width: 360px;
+            margin-bottom: 20px;
+            padding: 14px 20px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #1a1a1a;
+            letter-spacing: 0.04em;
+            background: linear-gradient(135deg, rgba(24,144,255,0.08) 0%, rgba(114,46,209,0.05) 100%);
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .switch-role { margin-top: 8px; font-size: 13px; text-align: center; }
+        .switch-role a { color: #1890ff; text-decoration: none; }
+        .switch-role a:hover { text-decoration: underline; }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 32px;
+            width: 100%;
+            max-width: 360px;
+        }
+        h1 { margin: 0 0 24px 0; font-size: 24px; font-weight: 600; color: #333; text-align: center; }
+        .tip {
+            margin-bottom: 16px;
+            padding: 10px 12px;
+            font-size: 13px;
+            color: #666;
+            background: #f5f5f5;
+            border-radius: 6px;
+        }
+        .tip.success { color: #52c41a; background: #f6ffed; }
+        .tip.err { color: #e74c3c; background: #fff2f0; }
+        .field { margin-bottom: 16px; }
+        .field-row {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+            height: 44px;
+        }
+        .field-row input {
+            flex: 1;
+            min-width: 0;
+            height: 44px;
+            padding: 0 12px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            outline: none;
+        }
+        .field-row input:focus { border-color: #1890ff; }
+        .code-btn, .countdown-box {
+            width: 110px;
+            flex-shrink: 0;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .code-btn {
+            background: #fff;
+            color: #1890ff;
+            border: 1px solid #1890ff;
+            cursor: pointer;
+        }
+        .code-btn:hover:not(:disabled) { background: #e6f7ff; }
+        .code-btn:disabled { background: #f5f5f5; color: #999; border-color: #ddd; cursor: not-allowed; }
+        .countdown-box {
+            background: #fff;
+            border: 1px solid #ddd;
+            color: #e74c3c;
+            font-variant-numeric: tabular-nums;
+        }
+        .pwd-input-wrap {
+            display: flex;
+            align-items: center;
+            height: 44px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #fff;
+            overflow: hidden;
+        }
+        .pwd-input-wrap:focus-within { border-color: #1890ff; }
+        .pwd-input-wrap input {
+            flex: 1;
+            min-width: 0;
+            height: 100%;
+            border: none;
+            padding: 0 12px;
+            font-size: 16px;
+            outline: none;
+        }
+        .pwd-input-wrap .pwd-toggle {
+            width: 40px;
+            height: 100%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-left: 1px solid #eee;
+            padding: 0;
+            cursor: pointer;
+            font-size: 16px;
+            color: #888;
+        }
+        .pwd-input-wrap .pwd-toggle:hover { color: #333; background: #f5f5f5; }
+        label { display: block; margin-bottom: 6px; font-size: 14px; color: #555; }
+        button.primary {
+            width: 100%;
+            height: 44px;
+            margin-top: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #fff;
+            background: #1890ff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button.primary:hover { background: #40a9ff; }
+        button.primary:disabled { background: #bbb; cursor: not-allowed; }
+        .footer { margin-top: 20px; text-align: center; font-size: 14px; color: #666; }
+        .footer a { color: #1890ff; text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .step { display: none; }
+        .step.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="greeting" id="greeting">尊敬的客户您好</div>
+    <div class="card">
+        <h1>注册</h1>
+        <p class="switch-role"><a href="index.html">切换身份</a></p>
+        <div id="tip" class="tip" style="display: none;"></div>
+
+        <div id="step1" class="step active">
+            <div class="field">
+                <label for="phone">手机号</label>
+                <div class="field-row">
+                    <input type="tel" id="phone" placeholder="请输入手机号" maxlength="11">
+                    <button type="button" id="getCodeBtn" class="code-btn">获取验证码</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="step2" class="step">
+            <div class="tip" style="display: block;">开发环境请到运行后端的终端查看验证码</div>
+            <div class="field">
+                <label for="code">验证码</label>
+                <div class="field-row">
+                    <input type="text" id="code" placeholder="请输入短信验证码" maxlength="6">
+                    <div id="countdownBox" class="countdown-box">300</div>
+                </div>
+            </div>
+            <button type="button" id="verifyCodeBtn" class="primary">验证并继续</button>
+        </div>
+
+        <div id="step3" class="step">
+            <p class="tip">请设置登录密码</p>
+            <div class="field">
+                <label for="password">密码</label>
+                <div class="pwd-input-wrap">
+                    <input type="password" id="password" placeholder="请输入密码（6～20位）">
+                    <button type="button" class="pwd-toggle" id="pwdToggle" title="显示/隐藏">👁</button>
+                </div>
+            </div>
+            <button type="button" id="submitBtn" class="primary">完成注册并进入</button>
+        </div>
+
+        <p class="footer">已有账号？<a href="login.html">去登录</a></p>
+    </div>
+    <script>
+        (function setGreeting() {
+            var role = localStorage.getItem('role') || 'user';
+            document.getElementById('greeting').textContent = role === 'consultant' ? '尊敬的顾问您好' : '尊敬的客户您好';
+        })();
+        var API_BASE = window.location.origin;
+        var currentPhone = '';
+        var CODE_SECONDS = 300;
+        var countdownTimer = null;
+        var countdownEnd = 0;
+
+        function showTip(msg, type) {
+            var el = document.getElementById('tip');
+            el.textContent = msg;
+            el.className = 'tip' + (type === 'success' ? ' success' : type === 'err' ? ' err' : '');
+            el.style.display = 'block';
+        }
+        function hideTip() {
+            document.getElementById('tip').style.display = 'none';
+        }
+        function goStep(stepId) {
+            document.querySelectorAll('.step').forEach(function (s) { s.classList.remove('active'); });
+            document.getElementById(stepId).classList.add('active');
+            hideTip();
+        }
+
+        function stopCountdown() {
+            if (countdownTimer) {
+                clearInterval(countdownTimer);
+                countdownTimer = null;
+            }
+        }
+        function runCountdown(showInBtn, showInBox) {
+            stopCountdown();
+            function tick() {
+                var left = Math.max(0, Math.ceil((countdownEnd - Date.now()) / 1000));
+                if (showInBtn) showInBtn.textContent = left > 0 ? left + 's' : '获取验证码';
+                if (showInBox) showInBox.textContent = left > 0 ? left : '0';
+                if (left <= 0) stopCountdown();
+            }
+            tick();
+            countdownTimer = setInterval(tick, 1000);
+        }
+
+        document.getElementById('pwdToggle').addEventListener('click', function () {
+            var el = document.getElementById('password');
+            var btn = this;
+            if (el.type === 'password') {
+                el.type = 'text';
+                btn.textContent = '🙈';
+            } else {
+                el.type = 'password';
+                btn.textContent = '👁';
+            }
+        });
+
+        document.getElementById('getCodeBtn').addEventListener('click', async function () {
+            var phone = document.getElementById('phone').value.trim();
+            if (!phone) {
+                showTip('请填写手机号', 'err');
+                return;
+            }
+            currentPhone = phone;
+            var btn = this;
+            btn.disabled = true;
+            hideTip();
+            try {
+                var role = localStorage.getItem('role') || 'user';
+                var checkRes = await fetch(API_BASE + '/auth/check-phone', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: phone, role: role })
+                });
+                var checkData = await checkRes.json();
+                if (!checkRes.ok) {
+                    showTip(checkData.message || '该手机号已注册', 'err');
+                    btn.disabled = false;
+                    return;
+                }
+                var res = await fetch(API_BASE + '/auth/send-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: phone, role: role })
+                });
+                var data = await res.json();
+                if (res.ok) {
+                    countdownEnd = Date.now() + CODE_SECONDS * 1000;
+                    sessionStorage.setItem('registerCodeEnd', countdownEnd);
+                    goStep('step2');
+                    document.getElementById('code').value = '';
+                    document.getElementById('code').focus();
+                    var box = document.getElementById('countdownBox');
+                    box.textContent = CODE_SECONDS;
+                    runCountdown(null, box);
+                } else {
+                    showTip(data.message || '发送失败', 'err');
+                }
+            } catch (e) {
+                showTip('网络错误，请确认后端已启动', 'err');
+            }
+            btn.disabled = false;
+        });
+
+        (function initStep2Countdown() {
+            var saved = sessionStorage.getItem('registerCodeEnd');
+            if (saved) {
+                countdownEnd = parseInt(saved, 10);
+                var box = document.getElementById('countdownBox');
+                runCountdown(null, box);
+            }
+        })();
+
+        document.getElementById('verifyCodeBtn').addEventListener('click', async function () {
+            var code = document.getElementById('code').value.trim();
+            if (!code) {
+                showTip('请输入验证码', 'err');
+                return;
+            }
+            var btn = this;
+            btn.disabled = true;
+            hideTip();
+            try {
+                var role = localStorage.getItem('role') || 'user';
+                var res = await fetch(API_BASE + '/auth/verify-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: currentPhone, code: code, role: role })
+                });
+                var data = await res.json();
+                if (res.ok) {
+                    stopCountdown();
+                    goStep('step3');
+                } else {
+                    showTip(data.message || '验证失败', 'err');
+                }
+            } catch (e) {
+                showTip('网络错误', 'err');
+            }
+            btn.disabled = false;
+        });
+
+        document.getElementById('submitBtn').addEventListener('click', async function () {
+            var password = document.getElementById('password').value;
+            if (!password) {
+                showTip('请填写密码', 'err');
+                return;
+            }
+            if (password.length < 6 || password.length > 20) {
+                showTip('密码请控制在 6～20 位', 'err');
+                return;
+            }
+            var btn = this;
+            btn.disabled = true;
+            btn.textContent = '提交中…';
+            hideTip();
+            try {
+                var role = localStorage.getItem('role') || 'user';
+                var res = await fetch(API_BASE + '/auth/set-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: currentPhone, password: password, role: role })
+                });
+                var data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('token', data.token);
+                    sessionStorage.removeItem('registerCodeEnd');
+                    showTip('注册成功，正在进入…', 'success');
+                    setTimeout(function () {
+                        window.location.href = 'dashboard.html';
+                    }, 600);
+                } else {
+                    showTip(data.message || '注册失败', 'err');
+                    btn.disabled = false;
+                    btn.textContent = '完成注册并进入';
+                }
+            } catch (e) {
+                showTip('网络错误', 'err');
+                btn.disabled = false;
+                btn.textContent = '完成注册并进入';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>请选择身份</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+        }
+        .title {
+            color: rgba(255,255,255,0.95);
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 40px;
+            letter-spacing: 0.05em;
+        }
+        .options {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 480px;
+        }
+        .option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 200px;
+            height: 200px;
+            border-radius: 20px;
+            text-decoration: none;
+            color: #fff;
+            font-size: 24px;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+        }
+        .option:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+        }
+        .option.client {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .option.consultant {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .option .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <p class="title">请选择您的身份</p>
+    <div class="options">
+        <button type="button" class="option client" id="btnClient">
+            <span class="icon">👤</span>
+            客户
+        </button>
+        <button type="button" class="option consultant" id="btnConsultant">
+            <span class="icon">💼</span>
+            顾问
+        </button>
+    </div>
+    <script>
+        document.getElementById('btnClient').addEventListener('click', function () {
+            localStorage.setItem('role', 'user');
+            window.location.href = 'login.html';
+        });
+        document.getElementById('btnConsultant').addEventListener('click', function () {
+            localStorage.setItem('role', 'consultant');
+            window.location.href = 'login.html';
+        });
+    </script>
+</body>
+</html>
