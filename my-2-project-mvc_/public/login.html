@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f5f5f5;
+            padding: 16px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 32px;
+            width: 100%;
+            max-width: 360px;
+        }
+        h1 { margin: 0 0 24px 0; font-size: 24px; font-weight: 600; color: #333; text-align: center; }
+        .tip {
+            margin-bottom: 16px;
+            padding: 10px 12px;
+            font-size: 14px;
+            color: #52c41a;
+            background: #f6ffed;
+            border-radius: 6px;
+        }
+        .field { margin-bottom: 16px; }
+        label { display: block; margin-bottom: 6px; font-size: 14px; color: #555; }
+        input {
+            width: 100%;
+            height: 44px;
+            padding: 0 12px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            outline: none;
+        }
+        input:focus { border-color: #1890ff; }
+        button {
+            width: 100%;
+            height: 44px;
+            margin-top: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #fff;
+            background: #1890ff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: #40a9ff; }
+        button:disabled { background: #bbb; cursor: not-allowed; }
+        .footer { margin-top: 20px; text-align: center; font-size: 14px; color: #666; }
+        .footer a { color: #1890ff; text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>登录</h1>
+        <div id="successTip" class="tip" style="display: none;">注册成功，请登录</div>
+        <form id="loginForm">
+            <div class="field">
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" placeholder="请输入用户名" required>
+            </div>
+            <div class="field">
+                <label for="password">密码</label>
+                <input type="password" id="password" name="password" placeholder="请输入密码" required>
+            </div>
+            <button type="submit" id="submitBtn">登录</button>
+        </form>
+        <p class="footer">还没有账号？<a href="register.html">去注册</a></p>
+    </div>
+    <script>
+        const params = new URLSearchParams(location.search);
+        if (params.get('registered') === '1') {
+            document.getElementById('successTip').style.display = 'block';
+        }
+
+        const API_BASE = 'http://localhost:3003';
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            const data = {
+                username: document.getElementById('username').value.trim(),
+                password: document.getElementById('password').value
+            };
+            try {
+                const res = await fetch(API_BASE + '/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('token', result.token);
+                    var name = (result.user && result.user.username) ? result.user.username : '用户';
+                    var tip = document.getElementById('successTip');
+                    tip.style.display = 'block';
+                    tip.style.color = '#1890ff';
+                    tip.textContent = '欢迎你！' + name + '，正在跳转…';
+                    tip.style.background = '#e6f7ff';
+                    document.getElementById('loginForm').style.display = 'none';
+                    document.querySelector('.footer').style.display = 'none';
+                    setTimeout(function () {
+                        window.location.href = 'dashboard.html';
+                    }, 800);
+                } else {
+                    alert(result.message || '登录失败');
+                }
+            } catch (err) {
+                alert('网络错误，请检查后端是否运行在 ' + API_BASE);
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

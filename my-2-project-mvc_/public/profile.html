@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人资料</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            background: #f5f5f5;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 32px;
+            width: 100%;
+            max-width: 360px;
+        }
+        h1 { margin: 0 0 24px 0; font-size: 24px; font-weight: 600; color: #333; text-align: center; }
+        .list { margin-bottom: 24px; }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 15px;
+        }
+        .row:last-child { border-bottom: none; }
+        .label { color: #555; }
+        .val { color: #333; font-weight: 500; }
+        .val.empty { color: #999; font-weight: normal; }
+        button {
+            width: 100%;
+            height: 44px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #fff;
+            background: #1890ff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: #40a9ff; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>个人资料</h1>
+        <div class="list" id="userList">
+            <div class="row"><span class="label">用户名</span><span class="val" id="username">加载中…</span></div>
+            <div class="row"><span class="label">年龄</span><span class="val" id="age">--</span></div>
+            <div class="row"><span class="label">邮箱</span><span class="val" id="email">--</span></div>
+        </div>
+        <button type="button" onclick="location.href='dashboard.html'">返回主页</button>
+    </div>
+    <script>
+        const API_BASE = 'http://localhost:3003';
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+            window.location.href = 'login.html';
+        } else {
+            (async () => {
+                try {
+                    // 先调 /auth/profile 拿到 userId（并验证 token）
+                    const profileRes = await fetch(API_BASE + '/auth/profile', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const profileData = await profileRes.json();
+                    if (!profileRes.ok) {
+                        alert(profileData.message || '获取资料失败');
+                        return;
+                    }
+                    const userId = profileData.user.userId;
+
+                    // 再调 /auth/users/:id 拿完整资料（年龄、邮箱等）
+                    const userRes = await fetch(API_BASE + '/auth/users/' + userId, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const userData = await userRes.json();
+                    if (!userRes.ok) {
+                        alert(userData.message || '获取用户信息失败');
+                        return;
+                    }
+
+                    const u = userData.user;
+                    document.getElementById('username').textContent = u.username || '--';
+                    document.getElementById('age').textContent = (u.age != null && u.age !== '') ? u.age + '岁' : '未填写';
+                    document.getElementById('age').classList.toggle('empty', u.age == null || u.age === '');
+                    document.getElementById('email').textContent = u.email || '未填写';
+                    document.getElementById('email').classList.toggle('empty', !u.email);
+                } catch (err) {
+                    alert('网络错误：' + (err.message || '请检查后端是否运行'));
+                }
+            })();
+        }
+    </script>
+</body>
+</html>
