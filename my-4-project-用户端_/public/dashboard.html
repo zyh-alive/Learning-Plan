@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主页</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            background: #f5f5f5;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .wrap {
+            width: 100%;
+            max-width: 560px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 32px;
+            margin-bottom: 16px;
+        }
+        .welcome {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin: 0 0 24px 0;
+            text-align: center;
+        }
+        .cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+        }
+        .big-card {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+            max-width: 260px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 28px;
+            text-align: center;
+            text-decoration: none;
+            color: #333;
+            font-size: 18px;
+            font-weight: 500;
+            transition: box-shadow 0.2s;
+        }
+        .big-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        }
+        .big-card .icon { font-size: 32px; margin-bottom: 12px; }
+        .big-card.logout {
+            cursor: pointer;
+            border: none;
+            font: inherit;
+            display: block;
+            width: 100%;
+        }
+        .big-card.logout { color: #e74c3c; }
+        .big-card.logout:hover { color: #c0392b; }
+        .red-dot {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #e74c3c;
+        }
+        .red-dot.hide { display: none; }
+        .status {
+            margin-top: 24px;
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <h1 class="welcome" id="welcome">欢迎，</h1>
+            <div class="cards">
+                <a href="profile.html" class="big-card" id="profileLink">
+                    <span class="red-dot hide" id="redDot"></span>
+                    <div class="icon">👤</div>
+                    我的资料
+                </a>
+                <button type="button" class="big-card logout" id="logoutBtn">
+                    <div class="icon">🚪</div>
+                    退出登录
+                </button>
+            </div>
+        </div>
+        <p class="status">当前登录状态：已登录</p>
+    </div>
+    <script>
+        var token = localStorage.getItem('token');
+        if (!token) {
+            window.location.href = 'login.html';
+        } else {
+            var welcomeEl = document.getElementById('welcome');
+            try {
+                var b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                var json = decodeURIComponent(escape(atob(b64)));
+                var payload = JSON.parse(json);
+                welcomeEl.textContent = '欢迎，' + (payload.phone || '用户');
+            } catch (e) {
+                welcomeEl.textContent = '欢迎，用户';
+            }
+
+            (async function () {
+                try {
+                    var profileRes = await fetch(window.location.origin + '/auth/profile', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    var profileData = await profileRes.json();
+                    if (!profileRes.ok) return;
+                    var userId = profileData.user.userId;
+                    var userRes = await fetch(window.location.origin + '/auth/users/' + userId, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    var userData = await userRes.json();
+                    if (!userRes.ok) return;
+                    var u = userData.user;
+                    var isCompleted = u && u.isCompleted;
+                    var dot = document.getElementById('redDot');
+                    if (!isCompleted) dot.classList.remove('hide'); else dot.classList.add('hide');
+                    if (u && isCompleted && u.name && String(u.name).trim()) {
+                        welcomeEl.textContent = '欢迎，' + u.name.trim();
+                    } else if (u && u.phone) {
+                        welcomeEl.textContent = '欢迎，' + u.phone;
+                    }
+                } catch (e) {}
+            })();
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', function () {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人资料</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            background: #f5f5f5;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 32px;
+            width: 100%;
+            max-width: 360px;
+        }
+        h1 { margin: 0 0 24px 0; font-size: 24px; font-weight: 600; color: #333; text-align: center; }
+        .list { margin-bottom: 24px; }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 15px;
+        }
+        .row:last-child { border-bottom: none; }
+        .label { color: #555; }
+        .val { color: #333; font-weight: 500; }
+        .val.empty { color: #999; font-weight: normal; }
+        button.primary {
+            width: 100%;
+            height: 44px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #fff;
+            background: #1890ff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button.primary:hover { background: #40a9ff; }
+        .menu-row {
+            display: block;
+            width: 100%;
+            padding: 14px 0;
+            margin-top: 8px;
+            text-align: center;
+            font-size: 16px;
+            color: #1890ff;
+            text-decoration: none;
+            border: 1px solid #1890ff;
+            border-radius: 6px;
+            background: #fff;
+        }
+        .menu-row:hover { background: #e6f7ff; }
+        .footer { margin-top: 24px; text-align: center; font-size: 14px; }
+        .footer a { color: #e74c3c; text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>个人资料</h1>
+        <div class="list" id="userList">
+            <div class="row"><span class="label">手机号</span><span class="val" id="phone">加载中…</span></div>
+            <div class="row"><span class="label">姓名</span><span class="val" id="name">--</span></div>
+            <div class="row"><span class="label">生日</span><span class="val" id="birth">--</span></div>
+            <div class="row"><span class="label">性别</span><span class="val" id="gender">--</span></div>
+            <div class="row"><span class="label">简介</span><span class="val" id="bio">--</span></div>
+            <div class="row"><span class="label">关于</span><span class="val" id="about">--</span></div>
+            <div class="row"><span class="label">金币</span><span class="val" id="coin">--</span></div>
+        </div>
+        <button type="button" class="primary" onclick="location.href='dashboard.html'">返回主页</button>
+
+        <a href="edit-profile.html" class="menu-row">编辑信息</a>
+        <a href="change-password.html" class="menu-row">修改密码</a>
+
+        <p class="footer"><a href="#" id="logoutLink">退出登录</a></p>
+    </div>
+    <script>
+        var API_BASE = window.location.origin;
+        var token = localStorage.getItem('token');
+        var genderText = { '0': '未知', '1': '男', '2': '女', '3': '其他' };
+
+        if (!token) {
+            window.location.href = 'login.html';
+        } else {
+            (async function () {
+                try {
+                    var profileRes = await fetch(API_BASE + '/auth/profile', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    var profileData = await profileRes.json();
+                    if (!profileRes.ok) {
+                        if (profileRes.status === 401 || profileRes.status === 403) {
+                            localStorage.removeItem('token');
+                            window.location.href = 'login.html?expired=1';
+                            return;
+                        }
+                        alert(profileData.message || '获取资料失败');
+                        return;
+                    }
+                    var userId = profileData.user.userId;
+                    var userRes = await fetch(API_BASE + '/auth/users/' + userId, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    var userData = await userRes.json();
+                    if (!userRes.ok) {
+                        if (userRes.status === 401 || userRes.status === 403) {
+                            localStorage.removeItem('token');
+                            window.location.href = 'login.html?expired=1';
+                            return;
+                        }
+                        alert(userData.message || '获取用户信息失败');
+                        return;
+                    }
+                    var u = userData.user;
+                    document.getElementById('phone').textContent = u.phone || '--';
+                    document.getElementById('name').textContent = u.name || '未填写';
+                    document.getElementById('name').classList.toggle('empty', !u.name);
+                    document.getElementById('birth').textContent = u.birth || '未填写';
+                    document.getElementById('birth').classList.toggle('empty', !u.birth);
+                    document.getElementById('gender').textContent = u.gender != null ? (genderText[String(u.gender)] || u.gender) : '未填写';
+                    document.getElementById('bio').textContent = u.bio || '未填写';
+                    document.getElementById('bio').classList.toggle('empty', !u.bio);
+                    document.getElementById('about').textContent = u.about || '未填写';
+                    document.getElementById('about').classList.toggle('empty', !u.about);
+                    document.getElementById('coin').textContent = u.coin != null ? u.coin : '0';
+                } catch (err) {
+                    alert('网络错误：' + (err.message || '请检查后端是否运行'));
+                }
+            })();
+        }
+
+        document.getElementById('logoutLink').addEventListener('click', function (e) {
+            e.preventDefault();
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        });
+    </script>
+</body>
+</html>
