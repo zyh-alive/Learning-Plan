@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>顾问主页</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(165deg, #1a1a2e 0%, #16213e 45%, #0f3460 100%);
+            padding: 16px;
+        }
+        .top {
+            max-width: 420px;
+            margin: 0 auto 20px;
+        }
+        .back {
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            font-size: 15px;
+        }
+        .back:hover { text-decoration: underline; }
+        .card {
+            max-width: 420px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+            padding: 24px 22px 28px;
+            overflow: hidden;
+        }
+        .hero {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .hero-avatar {
+            flex-shrink: 0;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #667eea 0%, #764ba2 55%, #5b4f9a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.45);
+        }
+        .hero-main {
+            flex: 1;
+            min-width: 0;
+        }
+        .hero-main h1 {
+            margin: 0 0 10px;
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a1a;
+            line-height: 1.3;
+            text-align: left;
+        }
+        .rating-block {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 14px;
+        }
+        .star-mini-track {
+            position: relative;
+            height: 28px;
+            width: 118px;
+            flex-shrink: 0;
+        }
+        .star-mini-gray, .star-mini-gold {
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-size: 22px;
+            line-height: 28px;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        .star-mini-gray { color: #e8e8e8; z-index: 1; }
+        .star-mini-gold-wrap {
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 2;
+            overflow: hidden;
+            height: 28px;
+            width: 0;
+        }
+        .star-mini-gold {
+            color: #faad14;
+            text-shadow: 0 0 1px rgba(250, 173, 20, 0.55), 0 1px 2px rgba(212, 136, 6, 0.2);
+        }
+        .rating-block .score-inline {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+        .intro-section {
+            margin-top: 18px;
+            padding: 16px 16px 18px;
+            background: linear-gradient(180deg, #fafbff 0%, #f5f7fa 100%);
+            border-radius: 14px;
+            border: 1px solid #eef0f4;
+        }
+        .intro-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #a0aec0;
+            letter-spacing: 0.1em;
+            margin-bottom: 12px;
+        }
+        .intro-sig {
+            margin: 0 0 12px;
+            font-size: 15px;
+            font-style: italic;
+            color: #434a57;
+            line-height: 1.5;
+        }
+        .intro-dur { margin: 0 0 12px; }
+        .dur-badge {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #e6f7ff, #bae7ff);
+            color: #0958d9;
+            border: 1px solid #91d5ff;
+        }
+        .intro-exp {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .intro-row { margin-bottom: 14px; }
+        .intro-row:last-child { margin-bottom: 0; }
+        .intro-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #a0aec0;
+            letter-spacing: 0.06em;
+            display: block;
+            margin-bottom: 6px;
+        }
+        .intro-val {
+            font-size: 15px;
+            color: #2d3748;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .intro-val .intro-empty { color: #cbd5e0; font-weight: 500; }
+        .rating-num {
+            font-size: 22px;
+            font-weight: 800;
+            color: #1a1a1a;
+            letter-spacing: -0.02em;
+        }
+        .rating-num.muted {
+            font-size: 15px;
+            font-weight: 600;
+            color: #999;
+        }
+        .review-meta {
+            width: 100%;
+            font-size: 13px;
+            color: #888;
+            margin-top: 2px;
+        }
+        .sub {
+            text-align: center;
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 16px;
+        }
+        .badge-wrap { text-align: center; margin-bottom: 20px; }
+        .badge {
+            display: inline-block;
+            font-size: 13px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+        .badge-0 { background: #f5f5f5; color: #666; }
+        .badge-1 { background: #f6ffed; color: #237804; border: 1px solid #b7eb8f; }
+        .badge-2 { background: #fffbe6; color: #d48806; border: 1px solid #ffe58f; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 4px;
+        }
+        .stat {
+            background: linear-gradient(180deg, #fafbff 0%, #f5f7fa 100%);
+            border-radius: 12px;
+            padding: 16px 12px;
+            text-align: center;
+            border: 1px solid #eef0f4;
+        }
+        .stat-val {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1890ff;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 6px;
+        }
+        .reviews-section {
+            margin-top: 22px;
+            padding-top: 20px;
+            border-top: 1px solid #f0f0f0;
+        }
+        .reviews-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+        .reviews-sub {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 14px;
+        }
+        .review-item {
+            background: linear-gradient(180deg, #fafbff 0%, #f7f8fa 100%);
+            border-radius: 14px;
+            padding: 14px 14px 16px;
+            margin-bottom: 12px;
+            border: 1px solid #eef0f4;
+        }
+        .review-item .oid {
+            font-size: 12px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 6px;
+        }
+        .review-item .stype {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+        .review-item .demand {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .review-item .rev-line {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 10px;
+        }
+        .review-item .rev-score {
+            font-size: 16px;
+            font-weight: 800;
+            color: #1a1a1a;
+        }
+        .review-item .rev-text {
+            font-size: 14px;
+            color: #444;
+            line-height: 1.45;
+            margin-top: 8px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .review-empty {
+            font-size: 13px;
+            color: #999;
+            text-align: center;
+            padding: 16px 8px;
+        }
+        .empty, .err {
+            max-width: 400px;
+            margin: 40px auto;
+            text-align: center;
+            color: rgba(255,255,255,0.9);
+        }
+        .err { color: #ffccc7; }
+    </style>
+</head>
+<body>
+    <div class="top">
+        <a class="back" href="consultants-list.html">← 返回顾问列表</a>
+    </div>
+    <div id="main"></div>
+    <script>
+        var API_BASE = window.location.origin;
+        var token = localStorage.getItem('token');
+        var workStatusText = { 0: '离线', 1: '空闲', 2: '忙碌' };
+
+        function esc(t) {
+            return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        }
+
+        function starRowHtml(ratingVal, hasReviews) {
+            var r = hasReviews ? Math.max(0, Math.min(5, Number(ratingVal) || 0)) : 0;
+            var pct = (r / 5) * 100;
+            return '<div class="star-mini-track" aria-hidden="true">' +
+                '<span class="star-mini-gray">★★★★★</span>' +
+                '<div class="star-mini-gold-wrap" style="width:' + pct + '%">' +
+                '<span class="star-mini-gold">★★★★★</span></div></div>';
+        }
+
+        function getRole() {
+            try {
+                var b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                var payload = JSON.parse(decodeURIComponent(escape(atob(b64))));
+                if (payload.role) return payload.role;
+            } catch (e) {}
+            return localStorage.getItem('role') || 'user';
+        }
+
+        var params = new URLSearchParams(window.location.search);
+        var id = parseInt(params.get('id'), 10);
+        var fromDashEmbed = params.get('embed') === '1';
+        if (fromDashEmbed) {
+            var backA = document.querySelector('.top .back');
+            if (backA) backA.href = 'consultants-list.html?embed=1';
+        }
+
+        if (!token) {
+            window.location.href = 'login.html';
+        } else if (getRole() !== 'user') {
+            window.location.href = 'dashboard.html';
+        } else if (!id || id <= 0) {
+            document.getElementById('main').innerHTML = '<p class="err">无效的顾问链接</p>';
+        } else {
+            (async function () {
+                var main = document.getElementById('main');
+                try {
+                    var res = await fetch(API_BASE + '/api/consultants/' + id, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    var data = await res.json();
+                    if (res.status === 401 || res.status === 403) {
+                        localStorage.removeItem('token');
+                        window.location.href = 'login.html?expired=1';
+                        return;
+                    }
+                    if (res.status === 404) {
+                        main.innerHTML = '<p class="err">该顾问不存在</p>';
+                        return;
+                    }
+                    if (!res.ok) {
+                        main.innerHTML = '<p class="err">' + esc(data.message || '加载失败') + '</p>';
+                        return;
+                    }
+                    var c = data.data || {};
+                    var name = (c.name && String(c.name).trim()) ? c.name.trim() : '顾问 #' + c.id;
+                    var st = c.workStatus != null ? Number(c.workStatus) : 0;
+                    var bc = st === 1 ? 'badge-1' : st === 2 ? 'badge-2' : 'badge-0';
+                    var reviews = c.reviewCount != null ? Number(c.reviewCount) : 0;
+                    var hasReviews = reviews > 0;
+                    var ratingNum = hasReviews ? Number(c.rating) : 0;
+                    var ratingStr = hasReviews ? ratingNum.toFixed(2) : '';
+                    var scoreHtml = hasReviews
+                        ? '<span class="score-inline"><span class="rating-num">' + esc(ratingStr) + '</span><span style="font-size:14px;color:#888;font-weight:600"> / 5</span></span>'
+                        : '<span class="rating-num muted">暂无评分</span>';
+                    var starsHtml = hasReviews ? starRowHtml(ratingNum, true) : '';
+                    var reviewLine = hasReviews
+                        ? '<div class="review-meta">共 ' + reviews + ' 条评价</div>'
+                        : '<div class="review-meta">尚无评价，下单体验后可评价</div>';
+
+                    function pickStr(obj) {
+                        var keys = Array.prototype.slice.call(arguments, 1);
+                        for (var i = 0; i < keys.length; i++) {
+                            var v = obj[keys[i]];
+                            if (v != null && String(v).trim()) return String(v).trim();
+                        }
+                        return '';
+                    }
+                    /** 始终展示三项，避免「有数据但界面空白」；兼容多种 JSON 键名 */
+                    function buildIntroBlock(consult) {
+                        var sig = pickStr(consult, 'signature', 'Signature');
+                        var wd = pickStr(consult, 'workDuration', 'work_duration');
+                        var ex = pickStr(consult, 'experience', 'Experience');
+                        function row(label, val) {
+                            var inner = val
+                                ? esc(val)
+                                : '<span class="intro-empty">暂未填写</span>';
+                            return '<div class="intro-row"><span class="intro-label">' + label + '</span><div class="intro-val">' + inner + '</div></div>';
+                        }
+                        return '<div class="intro-section">' +
+                            '<div class="intro-title">关于顾问</div>' +
+                            row('个性签名', sig) +
+                            row('工作时长', wd) +
+                            row('经历说明', ex) +
+                            '</div>';
+                    }
+
+                    main.innerHTML =
+                        '<div class="card">' +
+                        '<div class="hero">' +
+                        '<div class="hero-avatar">💼</div>' +
+                        '<div class="hero-main">' +
+                        '<h1>' + esc(name) + '</h1>' +
+                        '<div class="rating-block">' +
+                        scoreHtml +
+                        starsHtml +
+                        '</div>' +
+                        reviewLine +
+                        '</div></div>' +
+                        '<p class="sub">顾问编号 #' + esc(String(c.id)) + '</p>' +
+                        '<div class="badge-wrap"><span class="badge ' + bc + '">' + esc(workStatusText[st] || '离线') + '</span></div>' +
+                        '<div class="stats">' +
+                        '<div class="stat"><div class="stat-val">' + esc(String(c.totalOrders != null ? c.totalOrders : 0)) + '</div><div class="stat-label">总订单</div></div>' +
+                        '<div class="stat"><div class="stat-val">' + esc(String(reviews)) + '</div><div class="stat-label">评价数</div></div>' +
+                        '</div>' +
+                        buildIntroBlock(c) +
+                        '<div class="reviews-section">' +
+                        '<div class="reviews-title">用户评价</div>' +
+                        '<p class="reviews-sub">以下为客户完成订单后的评价，与订单一一对应。</p>' +
+                        '<div id="publicReviewList"><p class="review-empty">加载评价中…</p></div>' +
+                        '</div></div>';
+
+                    var listHost = document.getElementById('publicReviewList');
+                    try {
+                        var rres = await fetch(API_BASE + '/api/consultants/' + id + '/reviews', {
+                            headers: { 'Authorization': 'Bearer ' + token }
+                        });
+                        var rj = await rres.json();
+                        if (!rres.ok) {
+                            listHost.innerHTML = '<p class="review-empty">' + esc(rj.message || '评价加载失败') + '</p>';
+                        } else {
+                            var arr = (rj.data && rj.data.list) || [];
+                            if (arr.length === 0) {
+                                listHost.innerHTML = '<p class="review-empty">暂无评价，欢迎下单体验</p>';
+                            } else {
+                                listHost.innerHTML = arr.map(function (it) {
+                                    return '<div class="review-item">' +
+                                        '<div class="oid">订单 #' + esc(String(it.orderId)) + '</div>' +
+                                        '<div class="stype">' + esc(it.serviceType || '—') + '</div>' +
+                                        '<div class="demand">' + esc(it.serviceContent || '—') + '</div>' +
+                                        '<div class="rev-line">' +
+                                        '<span class="rev-score">' + esc(Number(it.rating).toFixed(1)) + '</span>' +
+                                        '<span style="font-size:12px;color:#888">/ 5</span>' +
+                                        starRowHtml(it.rating, true) +
+                                        '</div>' +
+                                        (it.reviewContent
+                                            ? '<div class="rev-text">' + esc(it.reviewContent) + '</div>'
+                                            : '<div class="rev-text" style="color:#999">（无文字评价）</div>') +
+                                        '</div>';
+                                }).join('');
+                            }
+                        }
+                    } catch (e2) {
+                        if (listHost) listHost.innerHTML = '<p class="review-empty">评价加载失败</p>';
+                    }
+                } catch (e) {
+                    main.innerHTML = '<p class="err">网络错误</p>';
+                }
+            })();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接单中心</title>
+    <style>
+        * { box-sizing: border-box; }
+        html.embed-in-dashboard, html.embed-in-dashboard body {
+            height: 100%;
+            min-height: 100%;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+            background: linear-gradient(165deg, #1e3a5f 0%, #16213e 45%, #0f3460 100%);
+            padding: 20px 16px 80px;
+        }
+        body.embed-in-dashboard {
+            padding-bottom: 20px;
+        }
+        .top { max-width: 520px; margin: 0 auto 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .back { color: rgba(255,255,255,0.9); text-decoration: none; font-size: 15px; }
+        h1 { margin: 0; font-size: 22px; color: #fff; flex: 1; min-width: 140px; }
+        .sse { font-size: 12px; padding: 6px 12px; border-radius: 20px; background: rgba(0,0,0,0.25); color: rgba(255,255,255,0.75); }
+        .sse.ok { background: rgba(82, 196, 26, 0.35); color: #b7eb8f; }
+        .sse.err { background: rgba(255, 77, 79, 0.35); color: #ffccc7; }
+        .hint { max-width: 520px; margin: 0 auto 18px; font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.55; }
+        .section { max-width: 520px; margin: 0 auto 22px; }
+        .section h2 { margin: 0 0 12px; font-size: 16px; color: rgba(255,255,255,0.9); font-weight: 600; }
+        .card {
+            background: rgba(255,255,255,0.97);
+            border-radius: 14px;
+            padding: 16px 18px;
+            margin-bottom: 10px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+        }
+        .card .row { font-size: 14px; color: #444; margin-bottom: 8px; line-height: 1.45; }
+        .card .row strong { color: #1a1a2e; margin-right: 6px; }
+        .notice-pending-review {
+            margin: 10px 0 0;
+            padding: 10px 12px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #f6ffed, #d9f7be);
+            border: 1px solid #b7eb8f;
+            font-size: 14px;
+            font-weight: 600;
+            color: #237804;
+            line-height: 1.5;
+        }
+        .card .meta { font-size: 12px; color: #999; margin-top: 10px; }
+        .card .actions { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .card .actions button, .card .actions .btn-start {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-accept { background: linear-gradient(135deg, #52c41a, #389e0d); color: #fff; }
+        .btn-start { background: linear-gradient(135deg, #1890ff, #096dd9); color: #fff; }
+        .btn-done { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+        .wait-txt { font-size: 14px; color: #d48806; font-weight: 600; }
+        .empty { text-align: center; padding: 28px 16px; color: rgba(255,255,255,0.5); font-size: 14px; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .tabs { display: flex; max-width: 520px; margin: 0 auto 16px; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 4px; }
+        .tabs .tab { flex: 1; text-align: center; padding: 10px 12px; border-radius: 10px; font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s; border: none; background: transparent; }
+        .tabs .tab.active { background: rgba(255,255,255,0.95); color: #1a1a2e; }
+        .tabs .tab:not(.active):hover { color: #fff; }
+        .list-wrap { max-width: 520px; margin: 0 auto; min-height: 120px; }
+    </style>
+</head>
+<body>
+    <script>
+        if (new URLSearchParams(location.search).get('embed') === '1') {
+            document.documentElement.classList.add('embed-in-dashboard');
+            document.body.classList.add('embed-in-dashboard');
+        }
+    </script>
+    <script src="js/embed-parent-nav.js"></script>
+    <div class="top">
+        <a class="back" href="dashboard.html">← 返回</a>
+        <h1>接单中心</h1>
+        <span class="sse err" id="sseStatus">推送未连接</span>
+    </div>
+    <p class="hint">接单后您为<strong style="color:#b7eb8f">空闲</strong>；点击「开始服务」后客户确认同意，您将变为<strong style="color:#ffe58f">忙碌</strong>；客户完成确认的服务单上点「已完成」后若无其他服务中单则恢复空闲。</p>
+
+    <div class="tabs">
+        <button type="button" class="tab active" data-tab="pending">待接单</button>
+        <button type="button" class="tab" data-tab="ongoing">进行中</button>
+        <button type="button" class="tab" data-tab="done">已完成</button>
+    </div>
+    <div class="list-wrap">
+        <div id="orderList"><p class="empty">加载中…</p></div>
+    </div>
+
+    <script>
+        var API = window.location.origin;
+        var token = localStorage.getItem('token');
+        var DASH_EMBED = new URLSearchParams(location.search).get('embed') === '1';
+        var pending = [];
+        var ongoing = [];
+        var done = [];
+        var currentTab = 'pending';
+        (function initTabFromUrl() {
+            var t = new URLSearchParams(location.search).get('tab');
+            if (t === 'ongoing' || t === 'pending' || t === 'done') {
+                currentTab = t;
+            }
+        })();
+        var CONSULTANT_HUB_SEEN_KEY = 'consultant_orders_seen_hub_signal_ms';
+
+        function parseHubTimeMs(v) {
+            if (v == null || v === '') return 0;
+            if (typeof v === 'number' && !isNaN(v)) return v;
+            var t = new Date(v).getTime();
+            return isNaN(t) ? 0 : t;
+        }
+
+        function pendingHubSignalMsLocal(o) {
+            var ms = 0;
+            if (o.paidAt) ms = Math.max(ms, parseHubTimeMs(o.paidAt));
+            if (o.rushPaidAt) ms = Math.max(ms, parseHubTimeMs(o.rushPaidAt));
+            if (o.updatedAt) ms = Math.max(ms, parseHubTimeMs(o.updatedAt));
+            if (ms <= 0 && o.createdAt) ms = parseHubTimeMs(o.createdAt);
+            return ms;
+        }
+
+        function doneHubSignalMsLocal(o) {
+            if (!o) return 0;
+            if (o.status === 'cancelled' && o.cancelledAt) return parseHubTimeMs(o.cancelledAt);
+            if (o.status === 'expired' && o.expiredAt) return parseHubTimeMs(o.expiredAt);
+            return 0;
+        }
+
+        /** 进入接单中心并拉到列表后：水位与主页红点一致（待接单+加急+取消/过期） */
+        function syncConsultantHubSeenFromLists(pend, doneArr) {
+            var maxP = 0;
+            (pend || []).forEach(function (o) {
+                maxP = Math.max(maxP, pendingHubSignalMsLocal(o));
+            });
+            (doneArr || []).forEach(function (o) {
+                maxP = Math.max(maxP, doneHubSignalMsLocal(o));
+            });
+            var raw = localStorage.getItem(CONSULTANT_HUB_SEEN_KEY);
+            var prev = 0;
+            if (raw != null && raw !== '') {
+                prev = parseInt(raw, 10);
+                if (isNaN(prev)) prev = 0;
+            }
+            localStorage.setItem(CONSULTANT_HUB_SEEN_KEY, String(Math.max(prev, maxP)));
+        }
+
+        function getRole() {
+            try {
+                var b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                var r = JSON.parse(decodeURIComponent(escape(atob(b64)))).role || 'user';
+                return String(r).toLowerCase();
+            } catch (e) { return String(localStorage.getItem('role') || 'user').toLowerCase(); }
+        }
+
+        if (!token) location.href = 'login.html';
+        else if (getRole() !== 'consultant') {
+            if (typeof window.__goDashboardFull === 'function') window.__goDashboardFull();
+            else location.href = 'dashboard.html';
+        }
+
+        (function bindConsultantChatFullscreen() {
+            if (!DASH_EMBED) return;
+            document.getElementById('orderList').addEventListener('click', function (e) {
+                var a = e.target.closest('a.js-chat-fullscreen');
+                if (!a) return;
+                e.preventDefault();
+                e.stopPropagation();
+                var h = a.getAttribute('href');
+                if (!h) return;
+                try {
+                    sessionStorage.setItem('orderChatReturnPanel', 'slot2');
+                } catch (x) {}
+                try {
+                    window.top.location.href = h;
+                } catch (x2) {
+                    window.location.href = h;
+                }
+            });
+        })();
+
+        function esc(t) {
+            return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        }
+        function fmtTime(t) {
+            if (!t) return '';
+            try { return new Date(t).toLocaleString('zh-CN'); } catch (e) { return ''; }
+        }
+
+        function getOrderAcceptDeadlineMs(o) {
+            if (!o || !o.paidAt) return null;
+            if (o.status === 'pending_rush' && o.rushExpiresAt) {
+                var rt = new Date(o.rushExpiresAt).getTime();
+                if (!isNaN(rt)) return rt;
+            }
+            if (o.status !== 'pending') return null;
+            if (o.expiresAt) {
+                var t = new Date(o.expiresAt).getTime();
+                if (!isNaN(t)) return t;
+            }
+            var paid = new Date(o.paidAt).getTime();
+            if (isNaN(paid)) return null;
+            var sec = o.survivalSeconds != null ? Number(o.survivalSeconds) : 86400;
+            if (isNaN(sec) || sec < 60) sec = 86400;
+            return paid + sec * 1000;
+        }
+
+        function formatConsultantRemainText(sec) {
+            sec = Math.max(0, Math.floor(Number(sec) || 0));
+            var h = Math.floor(sec / 3600);
+            var m = Math.floor((sec % 3600) / 60);
+            var s = sec % 60;
+            return (h > 0 ? h + '小时' : '') + m + '分' + s + '秒';
+        }
+
+        var consultantAcceptTicker = null;
+        var consultantAcceptReloadTimer = null;
+
+        function clearConsultantAcceptTicker() {
+            if (consultantAcceptTicker) {
+                clearInterval(consultantAcceptTicker);
+                consultantAcceptTicker = null;
+            }
+        }
+
+        function startConsultantAcceptDeadlineTicker() {
+            clearConsultantAcceptTicker();
+            var root = document.getElementById('orderList');
+            if (!root) return;
+            function tick() {
+                var nodes = root.querySelectorAll('[data-accept-deadline-ms]');
+                if (!nodes.length) {
+                    clearConsultantAcceptTicker();
+                    return;
+                }
+                var anyZero = false;
+                for (var i = 0; i < nodes.length; i++) {
+                    var el = nodes[i];
+                    var ms = parseInt(el.getAttribute('data-accept-deadline-ms'), 10);
+                    if (isNaN(ms)) continue;
+                    var sec = Math.max(0, Math.floor((ms - Date.now()) / 1000));
+                    var span = el.querySelector('.js-accept-remain-digits');
+                    if (span) span.textContent = formatConsultantRemainText(sec);
+                    if (sec === 0) anyZero = true;
+                }
+                if (anyZero && !consultantAcceptReloadTimer) {
+                    consultantAcceptReloadTimer = setTimeout(function () {
+                        consultantAcceptReloadTimer = null;
+                        loadInitial();
+                    }, 1200);
+                }
+            }
+            tick();
+            consultantAcceptTicker = setInterval(tick, 1000);
+        }
+
+        function cardCommon(o) {
+            var uname = o.userName ? esc(o.userName) : ('用户 #' + o.userId);
+            var rushBanner = o.isRush
+                ? '<div class="row" style="color:#c41d7f;font-weight:700;font-size:14px">🔥 加急单 · 加急费 ' + esc(o.rushFee != null ? o.rushFee : '—') + ' 币 · ' + esc(o.rushDurationSeconds != null ? (Math.floor(Number(o.rushDurationSeconds) / 60) + '分钟窗口') : '') + '</div>' +
+                  (o.rushDescription ? '<div class="row" style="color:#8c8c8c;font-size:13px">说明：' + esc(o.rushDescription) + '</div>' : '')
+                : '';
+            return rushBanner +
+                '<div class="row"><strong>订单</strong>#' + o.orderId + '</div>' +
+                '<div class="row"><strong>客户</strong>' + uname + '</div>' +
+                '<div class="row"><strong>类型</strong>' + esc(o.serviceType) + ' · ' + esc(o.price) + ' 金币</div>' +
+                '<div class="row"><strong>需求</strong>' + esc(o.serviceContent) + '</div>' +
+                '<div class="meta">' + fmtTime(o.createdAt) + '</div>';
+        }
+
+        function renderList() {
+            var listEl = document.getElementById('orderList');
+            clearConsultantAcceptTicker();
+            if (consultantAcceptReloadTimer) {
+                clearTimeout(consultantAcceptReloadTimer);
+                consultantAcceptReloadTimer = null;
+            }
+            var arr = currentTab === 'pending' ? pending : (currentTab === 'ongoing' ? ongoing : done);
+            var emptyMsg = currentTab === 'pending' ? '暂无待接单' : (currentTab === 'ongoing' ? '暂无进行中订单' : '暂无已完成/已取消/已过期订单');
+            if (arr.length === 0) {
+                listEl.innerHTML = '<p class="empty">' + emptyMsg + '</p>';
+                return;
+            }
+            if (currentTab === 'pending') {
+                listEl.innerHTML = arr.map(function (o) {
+                    var ttl = '';
+                    var deadlineMs = getOrderAcceptDeadlineMs(o);
+                    if (deadlineMs != null) {
+                        var sec0 = Math.max(0, Math.floor((deadlineMs - Date.now()) / 1000));
+                        if (sec0 > 0) {
+                            var note = o.isRush ? '（加急超时仅退加急费）' : '（超时订单自动关闭并退款）';
+                            ttl = '<div class="row js-accept-deadline" data-accept-deadline-ms="' + deadlineMs + '" style="color:#d46b08;font-size:13px">' +
+                                '<strong>接单剩余</strong> <span class="js-accept-remain-digits">' + formatConsultantRemainText(sec0) + '</span>' + note + '</div>';
+                        } else {
+                            ttl = '<div class="row js-accept-deadline" data-accept-deadline-ms="' + deadlineMs + '" style="color:#888;font-size:13px">' +
+                                '<strong>接单剩余</strong> <span class="js-accept-remain-digits">0分0秒</span>（正在同步…）</div>';
+                        }
+                    }
+                    if (!ttl && o.expiresAt) {
+                        ttl = '<div class="row" style="color:#888;font-size:12px">截止时间：' + fmtTime(o.expiresAt) + '</div>';
+                    }
+                    return '<div class="card" data-order-id="' + o.orderId + '">' + cardCommon(o) + ttl +
+                        '<div class="actions"><button type="button" class="btn-accept" data-act="accept" data-id="' + o.orderId + '">接单</button></div></div>';
+                }).join('');
+                listEl.querySelectorAll('[data-act="accept"]').forEach(function (btn) {
+                    btn.addEventListener('click', function () { doAccept(parseInt(btn.getAttribute('data-id'), 10), btn); });
+                });
+                startConsultantAcceptDeadlineTicker();
+            } else if (currentTab === 'ongoing') {
+                listEl.innerHTML = arr.map(function (o) {
+                    var st = o.flowStatus || o.status;
+                    var actions = '';
+                    if (st === 'accepted') {
+                        actions = '<button type="button" class="btn-start" data-act="start" data-id="' + o.orderId + '">开始服务</button>';
+                    } else if (st === 'start_invited') {
+                        actions = '<span class="wait-txt">已邀请客户确认，等待客户同意开始…</span>';
+                    } else if (st === 'in_service') {
+                        actions = '<a class="btn-start' + (DASH_EMBED ? ' js-chat-fullscreen' : '') + '" href="order-chat.html?orderId=' + o.orderId + '&returnPanel=slot2" style="text-decoration:none;color:#fff;display:inline-block;padding:10px 18px;border-radius:10px;font-size:15px;font-weight:600;background:linear-gradient(135deg,#1890ff,#096dd9);margin-right:8px">进入聊天</a>' +
+                            '<button type="button" class="btn-done" data-act="complete" data-id="' + o.orderId + '">已完成</button>';
+                    } else if (st === 'pending_review') {
+                        actions = '';
+                    }
+                    var stLabel = { accepted: '已接单', start_invited: '待客户确认开始', in_service: '服务中', pending_review: '待客户评价' }[st] || st;
+                    var reviewBanner = st === 'pending_review'
+                        ? '<div class="notice-pending-review">服务已完成，资金已到账；待客户评价。</div>'
+                        : '';
+                    return '<div class="card" data-order-id="' + o.orderId + '">' + cardCommon(o) + reviewBanner +
+                        '<div class="meta">状态：' + esc(stLabel) + ' · 接单 ' + fmtTime(o.acceptedAt || o.createdAt) + '</div>' +
+                        '<div class="actions">' + actions + '</div></div>';
+                }).join('');
+                listEl.querySelectorAll('[data-act="start"]').forEach(function (btn) {
+                    btn.addEventListener('click', function () { doStart(parseInt(btn.getAttribute('data-id'), 10), btn); });
+                });
+                listEl.querySelectorAll('[data-act="complete"]').forEach(function (btn) {
+                    btn.addEventListener('click', function () { doComplete(parseInt(btn.getAttribute('data-id'), 10), btn); });
+                });
+            } else {
+                listEl.innerHTML = arr.map(function (o) {
+                    var statusText = o.status === 'completed' ? '已完成' : (o.status === 'expired' ? '已过期' : '已取消');
+                    var endTime = o.status === 'completed'
+                        ? (o.completedAt || '')
+                        : (o.status === 'expired' ? (o.expiredAt || o.cancelledAt || '') : (o.cancelledAt || ''));
+                    var reason = ((o.status === 'cancelled' || o.status === 'expired') && o.cancelReason)
+                        ? '<div class="row">' + (o.status === 'expired' ? '说明：' : '取消原因：') + esc(o.cancelReason) + '</div>'
+                        : '';
+                    return '<div class="card" data-order-id="' + o.orderId + '">' + cardCommon(o) +
+                        '<div class="meta">' + statusText + (endTime ? ' · ' + fmtTime(endTime) : '') + '</div>' + reason + '</div>';
+                }).join('');
+            }
+        }
+
+        function render() {
+            document.querySelectorAll('.tabs .tab').forEach(function (t) {
+                t.classList.toggle('active', t.getAttribute('data-tab') === currentTab);
+            });
+            renderList();
+        }
+
+        async function loadInitial() {
+            try {
+                var res = await fetch(API + '/api/order/consultant/orders', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                var data = await res.json();
+                if (res.status === 401 || res.status === 403) {
+                    localStorage.removeItem('token');
+                    location.href = 'login.html';
+                    return;
+                }
+                if (!res.ok) {
+                    document.getElementById('orderList').innerHTML = '<p class="empty">' + esc(data.message || '加载失败') + '</p>';
+                    return;
+                }
+                pending = (data.data && data.data.pending) || [];
+                ongoing = (data.data && data.data.ongoing) || [];
+                done = (data.data && data.data.done) || [];
+                render();
+                syncConsultantHubSeenFromLists(pending, done);
+                try {
+                    if (DASH_EMBED && window.parent && typeof window.parent.__dashboardRefreshOrdersHubDot === 'function') {
+                        window.parent.__dashboardRefreshOrdersHubDot();
+                    }
+                } catch (e2) {}
+            } catch (e) {
+                document.getElementById('orderList').innerHTML = '<p class="empty">网络错误</p>';
+            }
+        }
+
+        function removeOrderEverywhere(orderId) {
+            pending = pending.filter(function (o) { return o.orderId !== orderId; });
+            ongoing = ongoing.filter(function (o) { return o.orderId !== orderId; });
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            render();
+        }
+
+        function onNewOrderFromSse(order) {
+            if (!order || order.orderId == null) return;
+            if (pending.some(function (x) { return x.orderId === order.orderId; })) return;
+            if (ongoing.some(function (x) { return x.orderId === order.orderId; })) return;
+            pending.push(order);
+            render();
+            syncConsultantHubSeenFromLists(pending, done);
+        }
+
+        async function doAccept(orderId, btn) {
+            if (!orderId || btn.disabled) return;
+            btn.disabled = true;
+            try {
+                var res = await fetch(API + '/api/order/' + orderId + '/accept', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                var data = await res.json();
+                if (!res.ok) {
+                    alert(data.message || '接单失败');
+                    btn.disabled = false;
+                    return;
+                }
+                var idx = pending.findIndex(function (o) { return o.orderId === orderId; });
+                if (idx >= 0) {
+                    var o = pending.splice(idx, 1)[0];
+                    o.status = 'accepted';
+                    o.flowStatus = 'accepted';
+                    ongoing.push(o);
+                    render();
+                } else loadInitial();
+                alert(data.message || '已接单');
+            } catch (e) {
+                alert('网络错误');
+                btn.disabled = false;
+            }
+        }
+
+        async function doStart(orderId, btn) {
+            if (!orderId || btn.disabled) return;
+            btn.disabled = true;
+            try {
+                var res = await fetch(API + '/api/order/' + orderId + '/request-start', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                var data = await res.json();
+                if (!res.ok) {
+                    alert(data.message || '操作失败');
+                    btn.disabled = false;
+                    return;
+                }
+                var o = ongoing.find(function (x) { return x.orderId === orderId; });
+                if (o) {
+                    o.flowStatus = 'start_invited';
+                    o.status = 'start_invited';
+                }
+                render();
+                alert(data.message || '已发送邀请');
+            } catch (e) {
+                alert('网络错误');
+                btn.disabled = false;
+            }
+        }
+
+        async function doComplete(orderId, btn) {
+            if (!orderId || btn.disabled) return;
+            if (!confirm('确认该订单已完成？')) return;
+            btn.disabled = true;
+            try {
+                var res = await fetch(API + '/api/order/' + orderId + '/complete', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                var data = await res.json();
+                if (!res.ok) {
+                    alert(data.message || '操作失败');
+                    btn.disabled = false;
+                    return;
+                }
+                ongoing = ongoing.filter(function (o) { return o.orderId !== orderId; });
+                loadInitial();
+                render();
+                alert(data.message || '已完成');
+            } catch (e) {
+                alert('网络错误');
+                btn.disabled = false;
+            }
+        }
+
+        function connectSse() {
+            var es = new EventSource(API + '/api/order/consultant/stream?token=' + encodeURIComponent(token));
+            var statusEl = document.getElementById('sseStatus');
+            es.onopen = function () {
+                statusEl.textContent = '实时推送已连接';
+                statusEl.className = 'sse ok';
+            };
+            es.onerror = function () {
+                statusEl.textContent = '推送断开，正在重连…';
+                statusEl.className = 'sse err';
+            };
+            es.onmessage = function (ev) {
+                try {
+                    var msg = JSON.parse(ev.data);
+                    if (msg.type === 'new_order' && msg.order) onNewOrderFromSse(msg.order);
+                    else if (msg.type === 'order_cancelled') {
+                        removeOrderEverywhere(msg.orderId);
+                        loadInitial();
+                        render();
+                    } else if (msg.type === 'consultant_reload_orders') loadInitial();
+                } catch (e) {}
+            };
+        }
+
+        document.querySelectorAll('.tabs .tab').forEach(function (btn) {
+            btn.addEventListener('click', function () { switchTab(btn.getAttribute('data-tab')); });
+        });
+        loadInitial();
+        connectSse();
+    </script>
+</body>
+</html>

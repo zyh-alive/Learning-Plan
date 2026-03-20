@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑资料</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            background: #f5f5f5;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .greeting {
+            width: 100%;
+            max-width: 360px;
+            margin-bottom: 20px;
+            padding: 14px 20px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #1a1a1a;
+            letter-spacing: 0.04em;
+            background: linear-gradient(135deg, rgba(24,144,255,0.08) 0%, rgba(114,46,209,0.05) 100%);
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 32px;
+            width: 100%;
+            max-width: 360px;
+        }
+        h1 { margin: 0 0 24px 0; font-size: 24px; font-weight: 600; color: #333; text-align: center; }
+        .field { margin-bottom: 16px; }
+        .field label { display: block; margin-bottom: 6px; font-size: 14px; color: #555; }
+        .field input, .field select, .field textarea {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            outline: none;
+        }
+        .field input, .field select { height: 44px; }
+        .field textarea { min-height: 80px; resize: vertical; }
+        .field input:focus, .field select:focus, .field textarea:focus { border-color: #1890ff; }
+        button {
+            width: 100%;
+            height: 44px;
+            margin-top: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #fff;
+            background: #1890ff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover { background: #40a9ff; }
+        button:disabled { background: #bbb; cursor: not-allowed; }
+        .back { display: block; margin-top: 16px; text-align: center; color: #1890ff; text-decoration: none; }
+        .back:hover { text-decoration: underline; }
+        .form-block.hidden { display: none; }
+        .hint { font-size: 12px; color: #888; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <div class="greeting" id="greeting">尊敬的客户您好</div>
+    <div class="card">
+        <h1>编辑资料</h1>
+        <!-- 客户：写入 user_profile -->
+        <form id="clientForm" class="form-block">
+            <div class="field">
+                <label for="editName">姓名</label>
+                <input type="text" id="editName" placeholder="选填">
+            </div>
+            <div class="field">
+                <label for="editBirth">生日</label>
+                <input type="date" id="editBirth" placeholder="选填">
+            </div>
+            <div class="field">
+                <label for="editGender">性别</label>
+                <select id="editGender">
+                    <option value="">请选择</option>
+                    <option value="0">未知</option>
+                    <option value="1">男</option>
+                    <option value="2">女</option>
+                    <option value="3">其他</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="editBio">简介</label>
+                <input type="text" id="editBio" placeholder="选填">
+            </div>
+            <div class="field">
+                <label for="editAbout">关于</label>
+                <textarea id="editAbout" placeholder="选填"></textarea>
+            </div>
+            <button type="submit" id="editBtnClient">保存</button>
+        </form>
+        <!-- 顾问：写入 consultant_profile（与客户表字段不同） -->
+        <form id="consultantForm" class="form-block hidden">
+            <div class="field">
+                <label for="k_name">顾问昵称</label>
+                <input type="text" id="k_name" placeholder="展示用昵称" required>
+                <p class="hint">保存后写入 consultant_profile，并标记资料完善</p>
+            </div>
+            <div class="field">
+                <label for="k_workStatus">工作状态</label>
+                <select id="k_workStatus">
+                    <option value="0">离线</option>
+                    <option value="1">空闲</option>
+                    <option value="2">忙碌</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="k_signature">个性签名</label>
+                <input type="text" id="k_signature" maxlength="200" placeholder="一句话介绍自己，展示在客户端顾问主页">
+            </div>
+            <div class="field">
+                <label for="k_workDuration">工作时长</label>
+                <input type="text" id="k_workDuration" maxlength="100" placeholder="如：从业 5 年、累计服务 3000+ 小时">
+            </div>
+            <div class="field">
+                <label for="k_experience">经历说明</label>
+                <textarea id="k_experience" maxlength="5000" placeholder="教育背景、资质、擅长领域等"></textarea>
+            </div>
+            <div class="field">
+                <label for="k_totalOrders">总订单数（演示可改，正式可由系统自动）</label>
+                <input type="number" id="k_totalOrders" min="0" value="0">
+            </div>
+            <div class="field">
+                <label for="k_rating">评分 0～5</label>
+                <input type="number" id="k_rating" min="0" max="5" step="0.01" value="0">
+            </div>
+            <div class="field">
+                <label for="k_reviewCount">评价数</label>
+                <input type="number" id="k_reviewCount" min="0" value="0">
+            </div>
+            <button type="submit" id="editBtnConsultant">保存</button>
+        </form>
+        <a href="profile.html" class="back">返回个人资料</a>
+    </div>
+    <script>
+        var API_BASE = window.location.origin;
+        var token = localStorage.getItem('token');
+        var userId = null;
+        var role = 'user';
+
+        function getRole() {
+            try {
+                var b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                var json = decodeURIComponent(escape(atob(b64)));
+                var payload = JSON.parse(json);
+                if (payload.role) return payload.role;
+            } catch (e) {}
+            return localStorage.getItem('role') || 'user';
+        }
+        if (!token) {
+            window.location.href = 'login.html';
+        } else {
+            role = getRole();
+            document.getElementById('greeting').textContent = role === 'consultant' ? '尊敬的顾问您好' : '尊敬的客户您好';
+            document.getElementById('clientForm').classList.toggle('hidden', role === 'consultant');
+            document.getElementById('consultantForm').classList.toggle('hidden', role !== 'consultant');
+            (async function () {
+                try {
+                    var profileRes = await fetch(API_BASE + '/auth/profile', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    var profileData = await profileRes.json();
+                    if (!profileRes.ok) {
+                        if (profileRes.status === 401 || profileRes.status === 403) {
+                            localStorage.removeItem('token');
+                            window.location.href = 'login.html?expired=1';
+                            return;
+                        }
+                        alert(profileData.message || '获取资料失败');
+                        return;
+                    }
+                    userId = profileData.user.userId != null ? profileData.user.userId : profileData.user.consultantId;
+                    var userRes = await fetch(API_BASE + '/auth/users/' + userId, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    var userData = await userRes.json();
+                    if (!userRes.ok) {
+                        alert(userData.message || '获取失败');
+                        return;
+                    }
+                    var u = userData.user;
+                    if (role === 'consultant') {
+                        document.getElementById('k_name').value = u.name || '';
+                        document.getElementById('k_workStatus').value = String(u.workStatus != null ? u.workStatus : 0);
+                        document.getElementById('k_signature').value = u.signature || '';
+                        document.getElementById('k_workDuration').value = u.workDuration || '';
+                        document.getElementById('k_experience').value = u.experience || '';
+                        document.getElementById('k_totalOrders').value = u.totalOrders != null ? u.totalOrders : 0;
+                        document.getElementById('k_rating').value = u.rating != null ? u.rating : 0;
+                        document.getElementById('k_reviewCount').value = u.reviewCount != null ? u.reviewCount : 0;
+                    } else {
+                        document.getElementById('editName').value = u.name || '';
+                        document.getElementById('editBirth').value = u.birth || '';
+                        document.getElementById('editGender').value = u.gender != null ? String(u.gender) : '';
+                        document.getElementById('editBio').value = u.bio || '';
+                        document.getElementById('editAbout').value = u.about || '';
+                    }
+                } catch (err) {
+                    alert('网络错误');
+                }
+            })();
+        }
+
+        document.getElementById('clientForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            if (!userId) { alert('请先等待资料加载完成'); return; }
+            var btn = document.getElementById('editBtnClient');
+            btn.disabled = true;
+            btn.textContent = '保存中…';
+            try {
+                var res = await fetch(API_BASE + '/auth/users/' + userId, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        name: document.getElementById('editName').value.trim() || null,
+                        birth: document.getElementById('editBirth').value || null,
+                        gender: document.getElementById('editGender').value === '' ? null : parseInt(document.getElementById('editGender').value, 10),
+                        bio: document.getElementById('editBio').value.trim() || null,
+                        about: document.getElementById('editAbout').value.trim() || null
+                    })
+                });
+                var data = await res.json();
+                if (res.ok) {
+                    alert('保存成功');
+                    window.location.href = 'profile.html';
+                } else {
+                    alert(data.message || '保存失败');
+                }
+            } catch (err) {
+                alert('网络错误');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '保存';
+            }
+        });
+
+        document.getElementById('consultantForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+            if (!userId) { alert('请先等待资料加载完成'); return; }
+            var name = document.getElementById('k_name').value.trim();
+            if (!name) { alert('请填写顾问昵称'); return; }
+            var btn = document.getElementById('editBtnConsultant');
+            btn.disabled = true;
+            btn.textContent = '保存中…';
+            try {
+                var res = await fetch(API_BASE + '/auth/users/' + userId, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        workStatus: parseInt(document.getElementById('k_workStatus').value, 10) || 0,
+                        signature: document.getElementById('k_signature').value.trim() || null,
+                        workDuration: document.getElementById('k_workDuration').value.trim() || null,
+                        experience: document.getElementById('k_experience').value.trim() || null,
+                        totalOrders: parseInt(document.getElementById('k_totalOrders').value, 10) || 0,
+                        rating: parseFloat(document.getElementById('k_rating').value) || 0,
+                        reviewCount: parseInt(document.getElementById('k_reviewCount').value, 10) || 0
+                    })
+                });
+                var data = await res.json();
+                if (res.ok) {
+                    alert('保存成功，已写入顾问资料表');
+                    window.location.href = 'profile.html';
+                } else {
+                    alert(data.message || '保存失败');
+                }
+            } catch (err) {
+                alert('网络错误');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '保存';
+            }
+        });
+    </script>
+</body>
+</html>

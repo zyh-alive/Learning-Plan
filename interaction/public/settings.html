@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>设置</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+            background: #f1f5f9;
+            padding: 20px 16px 32px;
+        }
+        body.embed {
+            background: transparent;
+            padding: 12px 12px 16px;
+            min-height: 0;
+        }
+        .page { max-width: 420px; margin: 0 auto; }
+        .head {
+            margin-bottom: 18px;
+        }
+        .head h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .head p {
+            margin: 6px 0 0;
+            font-size: 13px;
+            color: #64748b;
+        }
+        .section {
+            background: #fff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+            border: 1px solid #e2e8f0;
+            margin-bottom: 14px;
+        }
+        .row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 18px;
+            text-decoration: none;
+            color: #0f172a;
+            font-size: 15px;
+            font-weight: 500;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.15s;
+        }
+        .row:last-child { border-bottom: none; }
+        .row:active { background: #f8fafc; }
+        .row .chev { color: #94a3b8; font-size: 18px; font-weight: 300; }
+        .row.danger { color: #b91c1c; }
+        .logout-row {
+            display: block;
+            width: 100%;
+            text-align: left;
+            font-family: inherit;
+            cursor: pointer;
+            border: none;
+            background: #fff;
+        }
+        .hint {
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="head" id="settingsHead">
+            <h1>设置</h1>
+            <p>账号与安全</p>
+        </div>
+        <div class="section">
+            <a href="edit-profile.html" class="row" id="linkEdit">
+                编辑信息 <span class="chev">›</span>
+            </a>
+            <a href="change-password.html" class="row" id="linkPwd">
+                修改密码 <span class="chev">›</span>
+            </a>
+        </div>
+        <div class="section">
+            <button type="button" class="row logout-row danger" id="logoutBtn">
+                退出登录 <span class="chev">›</span>
+            </button>
+        </div>
+        <p class="hint" id="settingsHint">安全退出后需重新登录</p>
+    </div>
+    <script>
+        (function () {
+            var params = new URLSearchParams(window.location.search);
+            if (params.get('embed') === '1') {
+                document.body.classList.add('embed');
+                var h = document.getElementById('settingsHead');
+                if (h) h.style.display = 'none';
+                var hint = document.getElementById('settingsHint');
+                if (hint) hint.style.marginTop = '8px';
+            }
+        })();
+        document.getElementById('logoutBtn').addEventListener('click', function () {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+        });
+    </script>
+</body>
+</html>

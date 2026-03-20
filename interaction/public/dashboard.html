@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>主页</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            font-family: "Noto Sans SC", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            min-height: 100dvh;
+            background: linear-gradient(165deg, #1e293b 0%, #0f172a 45%, #020617 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 0 0 env(safe-area-inset-bottom, 0);
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.06) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.06) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .app {
+            width: 100%;
+            max-width: 520px;
+            position: relative;
+            z-index: 1;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            padding: 16px 16px 12px;
+        }
+        .top-bar {
+            flex-shrink: 0;
+            margin-bottom: 12px;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            backdrop-filter: blur(12px);
+        }
+        .top-bar .greeting {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.65);
+            margin-bottom: 4px;
+        }
+        .top-bar .welcome {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+
+        /* 单层外壳：消息区与底栏同一圆角容器，视觉上「套在一起」 */
+        .shell {
+            flex: 1;
+            min-height: 220px;
+            display: flex;
+            flex-direction: column;
+            border-radius: 24px;
+            overflow: hidden;
+            background: linear-gradient(180deg, #f1f5f9 0%, #e8edf3 100%);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            box-shadow:
+                0 16px 48px rgba(0, 0, 0, 0.22),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6);
+        }
+        .shell-panels {
+            flex: 1;
+            min-height: 0;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .panel {
+            position: absolute;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .panel.is-active {
+            display: flex;
+        }
+
+        /* 消息：内层白卡片嵌在外壳里 */
+        .nest-surface {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            margin: 10px 10px 0;
+            padding: 0;
+            background: #fff;
+            border-radius: 18px;
+            border: 1px solid #e2e8f0;
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.9),
+                0 2px 8px rgba(15, 23, 42, 0.06);
+            overflow: hidden;
+        }
+        .msg-section .section-head {
+            flex-shrink: 0;
+            padding: 14px 16px 10px;
+            border-bottom: 1px solid #eef2f6;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(180deg, #fafbfc 0%, #fff 100%);
+        }
+        .msg-section .section-head h2 {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .msg-section .section-head .hint {
+            font-size: 11px;
+            color: #94a3b8;
+            max-width: 58%;
+            text-align: right;
+            line-height: 1.35;
+        }
+        .msg-body {
+            flex: 1;
+            min-height: 0;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .conv-list {
+            flex: 1;
+            min-height: 120px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 12px 10px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #f8fafc;
+        }
+        .conv-empty {
+            position: absolute;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 36px 20px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 14px;
+            line-height: 1.6;
+            background: #f8fafc;
+            z-index: 1;
+        }
+        .conv-empty.is-visible { display: flex; }
+        /* 每条订单会话：嵌套小卡片 + 订单之间分界线 */
+        .conv-nest {
+            border-radius: 14px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        }
+        .conv-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 14px;
+            text-decoration: none;
+            color: inherit;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .conv-item:active { background: #f1f5f9; }
+        .conv-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .conv-avatar.consultant-bg { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .conv-body { flex: 1; min-width: 0; }
+        .conv-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .conv-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #0f172a;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .conv-time { font-size: 12px; color: #94a3b8; flex-shrink: 0; }
+        .conv-preview {
+            font-size: 13px;
+            color: #64748b;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .conv-badge {
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 9px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .conv-badge.hide { display: none; }
+        .red-dot {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            z-index: 10;
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
+            pointer-events: none;
+        }
+        .red-dot.hide { display: none !important; }
+
+        /* iframe 铺满内容区，不用外层白底圆角（否则会盖住深色子页面，像一块白挡板） */
+        .panel-embed {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: transparent;
+        }
+        .embed-frame {
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+            height: 100%;
+            border: 0;
+            display: block;
+            background: transparent;
+        }
+
+        /* 底栏在外壳底部，与上方面板同一外轮廓 */
+        .dock-bar {
+            flex-shrink: 0;
+            padding: 10px 6px calc(10px + env(safe-area-inset-bottom, 0px));
+            background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+            border-top: 1px solid #dce3ec;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-around;
+            align-items: flex-end;
+            gap: 2px;
+        }
+        .dock-item {
+            flex: 1;
+            min-width: 0;
+            max-width: 76px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #475569;
+            position: relative;
+            padding: 4px 2px 0;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-family: inherit;
+            transition: transform 0.18s ease, color 0.15s;
+        }
+        .dock-item:active { transform: scale(0.96); }
+        .dock-item .dock-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            line-height: 1;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+            transition: box-shadow 0.2s, transform 0.2s;
+        }
+        .dock-item.is-active .dock-icon {
+            box-shadow: 0 6px 18px rgba(99, 102, 241, 0.25);
+            transform: translateY(-1px);
+        }
+        .dock-item .dock-label {
+            margin-top: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            text-align: center;
+            line-height: 1.2;
+            color: #64748b;
+        }
+        .dock-item.is-active .dock-label { color: #4338ca; }
+        .dock-item.is-hidden { display: none !important; }
+        .dock-icon.icon-msg { background: linear-gradient(145deg, #e0e7ff, #c7d2fe); }
+        .dock-icon.icon-list { background: linear-gradient(145deg, #e0e7ff, #c7d2fe); }
+        .dock-icon.icon-orders { background: linear-gradient(145deg, #dbeafe, #bfdbfe); }
+        .dock-icon.icon-service { background: linear-gradient(145deg, #d1fae5, #a7f3d0); }
+        .dock-icon.icon-hub { background: linear-gradient(145deg, #fef3c7, #fde68a); }
+        .dock-icon.icon-profile { background: linear-gradient(145deg, #fce7f3, #fbcfe8); }
+        .dock-icon.icon-settings { background: linear-gradient(145deg, #e2e8f0, #cbd5e1); }
+
+        .status-foot {
+            margin-top: 10px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.38);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <div class="top-bar">
+            <div class="greeting" id="greeting">尊敬的客户您好</div>
+            <h1 class="welcome" id="welcome">欢迎，</h1>
+        </div>
+
+        <div class="shell">
+            <div class="shell-panels">
+                <div class="panel is-active" id="panel-messages" role="tabpanel">
+                    <div class="nest-surface msg-section">
+                        <div class="section-head">
+                            <h2>消息</h2>
+                            <span class="hint" id="msgSectionHint">点击条目进入该订单聊天</span>
+                        </div>
+                        <div class="msg-body">
+                            <div class="conv-list" id="convList"></div>
+                            <div class="conv-empty is-visible" id="convEmpty">正在加载消息…</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" id="panel-slot1" role="tabpanel" hidden>
+                    <div class="panel-embed">
+                        <iframe class="embed-frame" id="iframeSlot1" title="功能页"></iframe>
+                    </div>
+                </div>
+                <div class="panel" id="panel-slot2" role="tabpanel" hidden>
+                    <div class="panel-embed">
+                        <iframe class="embed-frame" id="iframeSlot2" title="功能页"></iframe>
+                    </div>
+                </div>
+                <div class="panel" id="panel-profile" role="tabpanel" hidden>
+                    <div class="panel-embed">
+                        <iframe class="embed-frame" id="iframeProfile" title="我的资料"></iframe>
+                    </div>
+                </div>
+                <div class="panel" id="panel-settings" role="tabpanel" hidden>
+                    <div class="panel-embed">
+                        <iframe class="embed-frame" id="iframeSettings" title="设置"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="dock-bar" aria-label="主导航">
+                <button type="button" class="dock-item is-active" data-panel="messages" id="dockMessages" aria-selected="true">
+                    <div class="dock-icon icon-msg">💬</div>
+                    <span class="dock-label">消息</span>
+                </button>
+                <button type="button" class="dock-item is-hidden" data-panel="slot1" id="dockSlot1">
+                    <div class="dock-icon icon-list" id="dockSlot1Icon">📋</div>
+                    <span class="dock-label" id="dockSlot1Label">—</span>
+                </button>
+                <button type="button" class="dock-item is-hidden" data-panel="slot2" id="dockSlot2">
+                    <div class="dock-icon icon-hub" id="dockSlot2Icon">🔔</div>
+                    <span class="red-dot hide" id="ordersHubDot" title=""></span>
+                    <span class="dock-label" id="dockSlot2Label">—</span>
+                </button>
+                <button type="button" class="dock-item" data-panel="profile" id="dockProfile">
+                    <span class="red-dot" id="redDot"></span>
+                    <div class="dock-icon icon-profile">👤</div>
+                    <span class="dock-label">我的资料</span>
+                </button>
+                <button type="button" class="dock-item" data-panel="settings" id="dockSettings">
+                    <div class="dock-icon icon-settings">⚙️</div>
+                    <span class="dock-label">设置</span>
+                </button>
+            </nav>
+        </div>
+    </div>
+    <p class="status-foot">已登录 · 编辑资料与退出请在「设置」</p>
+
+    <script>
+        var API = window.location.origin;
+        var token = localStorage.getItem('token');
+
+        var IFRAME_SRC = {
+            slot1: { user: 'consultants-list.html', consultant: 'consultant-services.html' },
+            slot2: { user: 'my-orders.html', consultant: 'consultant-orders.html' }
+        };
+
+        function iframeAppUrl(path) {
+            var sep = path.indexOf('?') >= 0 ? '&' : '?';
+            return path + sep + 'embed=1';
+        }
+
+        function getRole() {
+            try {
+                var b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                var payload = JSON.parse(decodeURIComponent(escape(atob(b64))));
+                if (payload.role) return String(payload.role).toLowerCase();
+            } catch (e) {}
+            return String(localStorage.getItem('role') || 'user').toLowerCase();
+        }
+
+        window.__dashboardRefreshOrdersHubDot = null;
+        window.__dashboardRefreshUserOrdersDot = null;
+
+        function showPanel(name) {
+            var ids = {
+                messages: 'panel-messages',
+                slot1: 'panel-slot1',
+                slot2: 'panel-slot2',
+                profile: 'panel-profile',
+                settings: 'panel-settings'
+            };
+            Object.keys(ids).forEach(function (key) {
+                var el = document.getElementById(ids[key]);
+                if (!el) return;
+                var on = key === name;
+                el.classList.toggle('is-active', on);
+                el.hidden = !on;
+            });
+            document.querySelectorAll('.dock-item[data-panel]').forEach(function (btn) {
+                var on = btn.getAttribute('data-panel') === name;
+                btn.classList.toggle('is-active', on);
+                btn.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+
+            if (name === 'profile') {
+                var f = document.getElementById('iframeProfile');
+                var pUrl = 'profile.html?embed=1';
+                if (f && f.dataset.loaded !== pUrl) {
+                    f.src = pUrl;
+                    f.dataset.loaded = pUrl;
+                }
+            }
+            if (name === 'settings') {
+                var s = document.getElementById('iframeSettings');
+                var sUrl = 'settings.html?embed=1';
+                if (s && s.dataset.loaded !== sUrl) {
+                    s.src = sUrl;
+                    s.dataset.loaded = sUrl;
+                }
+            }
+            if (name === 'slot1') {
+                var a = document.getElementById('iframeSlot1');
+                var role = getRole();
+                var url = iframeAppUrl(IFRAME_SRC.slot1[role] || IFRAME_SRC.slot1.user);
+                if (a && a.dataset.loaded !== url) {
+                    a.src = url;
+                    a.dataset.loaded = url;
+                }
+            }
+            if (name === 'slot2') {
+                var b = document.getElementById('iframeSlot2');
+                var role2 = getRole();
+                var url2 = iframeAppUrl(IFRAME_SRC.slot2[role2] || IFRAME_SRC.slot2.user);
+                if (b && b.dataset.loaded !== url2) {
+                    b.src = url2;
+                    b.dataset.loaded = url2;
+                }
+                setTimeout(function () {
+                    if (getRole() === 'consultant' && typeof window.__dashboardRefreshOrdersHubDot === 'function') {
+                        window.__dashboardRefreshOrdersHubDot();
+                    }
+                    if (getRole() === 'user' && typeof window.__dashboardRefreshUserOrdersDot === 'function') {
+                        window.__dashboardRefreshUserOrdersDot();
+                    }
+                }, 700);
+            }
+        }
+        window.__dashboardShowPanel = showPanel;
+
+        document.querySelectorAll('.dock-item[data-panel]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                showPanel(btn.getAttribute('data-panel'));
+            });
+        });
+
+        function formatConvTime(iso) {
+            if (!iso) return '';
+            var d = new Date(iso);
+            if (isNaN(d.getTime())) return '';
+            var now = new Date();
+            var sameDay = d.toDateString() === now.toDateString();
+            var pad = function (n) { return n < 10 ? '0' + n : n; };
+            if (sameDay) return pad(d.getHours()) + ':' + pad(d.getMinutes());
+            return pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+        }
+
+        function truncate(s, n) {
+            if (!s) return '';
+            s = String(s);
+            return s.length <= n ? s : s.slice(0, n) + '…';
+        }
+
+        var EMPTY_CONV_HTML =
+            '暂无会话条目<br><span style="font-size:13px;color:#94a3b8">进行中的订单会出现在此处；也可从底部其他入口进入</span>';
+
+        function renderConversations(list, myRole) {
+            var box = document.getElementById('convList');
+            var empty = document.getElementById('convEmpty');
+            box.innerHTML = '';
+            if (!list || !list.length) {
+                empty.innerHTML = EMPTY_CONV_HTML;
+                empty.classList.add('is-visible');
+                return;
+            }
+            empty.classList.remove('is-visible');
+            list.forEach(function (c) {
+                var nest = document.createElement('div');
+                nest.className = 'conv-nest';
+
+                var a = document.createElement('a');
+                a.className = 'conv-item';
+                a.href = 'order-chat.html?orderId=' + encodeURIComponent(c.orderId) + '&returnPanel=messages';
+
+                var av = document.createElement('div');
+                av.className = 'conv-avatar' + (myRole === 'user' ? '' : ' consultant-bg');
+                av.textContent = myRole === 'user' ? '💬' : '👤';
+
+                var body = document.createElement('div');
+                body.className = 'conv-body';
+
+                var top = document.createElement('div');
+                top.className = 'conv-top';
+                var name = document.createElement('span');
+                name.className = 'conv-name';
+                name.textContent = c.otherName || '会话';
+                var time = document.createElement('span');
+                time.className = 'conv-time';
+                time.textContent = formatConvTime(c.lastAt);
+                top.appendChild(name);
+                top.appendChild(time);
+
+                var prev = document.createElement('div');
+                prev.className = 'conv-preview';
+                var prefix = c.lastSenderRole === myRole ? '我：' : '';
+                prev.textContent = prefix + truncate(c.lastContent, 40);
+
+                body.appendChild(top);
+                body.appendChild(prev);
+
+                var badge = document.createElement('span');
+                badge.className = 'conv-badge' + ((c.unreadCount > 0) ? '' : ' hide');
+                badge.textContent = c.unreadCount > 99 ? '99+' : String(c.unreadCount);
+
+                a.appendChild(av);
+                a.appendChild(body);
+                a.appendChild(badge);
+                nest.appendChild(a);
+                a.addEventListener('click', function () {
+                    try {
+                        sessionStorage.setItem('orderChatReturnPanel', 'messages');
+                    } catch (err) {}
+                });
+                box.appendChild(nest);
+            });
+        }
+
+        async function loadConversations() {
+            if (!token) return;
+            var empty = document.getElementById('convEmpty');
+            try {
+                var res = await fetch(API + '/api/order/chat/conversations', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                var data = {};
+                try {
+                    data = await res.json();
+                } catch (e2) {
+                    data = {};
+                }
+                if (!res.ok) {
+                    empty.classList.add('is-visible');
+                    empty.innerHTML =
+                        '消息列表加载失败（' +
+                        (res.status || '?') +
+                        '）<br><span style="font-size:13px;color:#94a3b8">' +
+                        (data.message || '请检查网络或重新登录') +
+                        '</span>';
+                    document.getElementById('convList').innerHTML = '';
+                    return;
+                }
+                var list = (data.data && data.data.list) || [];
+                renderConversations(list, getRole());
+            } catch (e) {
+                empty.classList.add('is-visible');
+                empty.innerHTML =
+                    '网络异常，无法加载消息列表<br><span style="font-size:13px;color:#94a3b8">请稍后再试</span>';
+                document.getElementById('convList').innerHTML = '';
+            }
+        }
+
+        if (!token) {
+            window.location.href = 'login.html';
+        } else {
+            var role = String(getRole() || 'user').toLowerCase();
+            document.getElementById('greeting').textContent = role === 'consultant' ? '尊敬的顾问您好' : '尊敬的客户您好';
+            var hintEl = document.getElementById('msgSectionHint');
+            if (hintEl) {
+                hintEl.textContent =
+                    role === 'consultant'
+                        ? '进行中订单列于此，点击进入全屏聊天'
+                        : '服务中订单列于此；底部可切换其他功能';
+            }
+
+            /* 用户：顾问列表 + 我的订单 */
+            if (role === 'user') {
+                document.getElementById('dockSlot1').classList.remove('is-hidden');
+                document.getElementById('dockSlot2').classList.remove('is-hidden');
+                document.getElementById('dockSlot1Icon').className = 'dock-icon icon-list';
+                document.getElementById('dockSlot1Icon').textContent = '💼';
+                document.getElementById('dockSlot1Label').textContent = '顾问列表';
+                document.getElementById('dockSlot2Icon').className = 'dock-icon icon-orders';
+                document.getElementById('dockSlot2Icon').textContent = '📋';
+                document.getElementById('dockSlot2Label').textContent = '我的订单';
+                var USER_ACCEPT_SEEN_KEY = 'user_orders_seen_max_accept_ms';
+                function parseTimeMs(v) {
+                    if (v == null || v === '') return 0;
+                    if (typeof v === 'number' && !isNaN(v)) return v;
+                    var t = new Date(v).getTime();
+                    return isNaN(t) ? 0 : t;
+                }
+                function userOrderAcceptMs(o) {
+                    if (!o || !o.acceptedAt) return 0;
+                    return parseTimeMs(o.acceptedAt);
+                }
+                function refreshUserOrdersDot() {
+                    var dot = document.getElementById('ordersHubDot');
+                    if (!dot || !token) return;
+                    dot.setAttribute('title', '顾问已接单，请查看我的订单');
+                    fetch(API + '/api/order/list', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    })
+                        .then(function (r) {
+                            return r.json().then(function (data) {
+                                return { ok: r.ok, data: data };
+                            });
+                        })
+                        .then(function (res) {
+                            if (!res.ok) return;
+                            var data = res.data || {};
+                            var list = (data.data && data.data.list) || [];
+                            var raw = localStorage.getItem(USER_ACCEPT_SEEN_KEY);
+                            var seen = 0;
+                            if (raw != null && raw !== '') {
+                                seen = parseInt(raw, 10);
+                                if (isNaN(seen)) seen = 0;
+                            }
+                            /* 无键：尚未进过「我的订单」，任意顾问已接单都应亮灯；水位仅由 my-orders 页写入 */
+                            var hasNew = list.some(function (o) {
+                                return userOrderAcceptMs(o) > seen;
+                            });
+                            if (hasNew) dot.classList.remove('hide');
+                            else dot.classList.add('hide');
+                        })
+                        .catch(function () {});
+                }
+                window.__dashboardRefreshUserOrdersDot = refreshUserOrdersDot;
+                refreshUserOrdersDot();
+                setInterval(refreshUserOrdersDot, 20000);
+                try {
+                    var ues = new EventSource(API + '/api/order/user/stream?token=' + encodeURIComponent(token));
+                    ues.onmessage = function (ev) {
+                        try {
+                            var m = JSON.parse(ev.data);
+                            if (m.type === 'start_service_invite' && m.orderId) {
+                                if (window.confirm('顾问邀请您确认开始服务，是否前往确认页面？')) {
+                                    window.location.href = 'order-start-invite.html?id=' + m.orderId;
+                                }
+                            }
+                        } catch (e) {}
+                    };
+                } catch (e) {}
+            }
+            /* 顾问：注册业务 + 接单中心 */
+            if (role === 'consultant') {
+                document.getElementById('dockSlot1').classList.remove('is-hidden');
+                document.getElementById('dockSlot2').classList.remove('is-hidden');
+                document.getElementById('dockSlot1Icon').className = 'dock-icon icon-service';
+                document.getElementById('dockSlot1Icon').textContent = '📝';
+                document.getElementById('dockSlot1Label').textContent = '注册业务';
+                document.getElementById('dockSlot2Icon').className = 'dock-icon icon-hub';
+                document.getElementById('dockSlot2Icon').textContent = '🔔';
+                document.getElementById('dockSlot2Label').textContent = '接单中心';
+                /* 与用户端一致：记录「已看到的待接单信号时间」最大值，不用 Date.now()（否则 iframe/独立页一次加载就会把 lastRead 拉到极大，红点永久不亮） */
+                var CONSULTANT_HUB_SEEN_KEY = 'consultant_orders_seen_hub_signal_ms';
+                function parseTimeMsConsultant(v) {
+                    if (v == null || v === '') return 0;
+                    if (typeof v === 'number' && !isNaN(v)) return v;
+                    var t = new Date(v).getTime();
+                    return isNaN(t) ? 0 : t;
+                }
+                /** 待接单：付款、加急付款、订单更新时间（加急过期回到普通池等） */
+                function pendingHubSignalMs(o) {
+                    var ms = 0;
+                    if (o.paidAt) ms = Math.max(ms, parseTimeMsConsultant(o.paidAt));
+                    if (o.rushPaidAt) ms = Math.max(ms, parseTimeMsConsultant(o.rushPaidAt));
+                    if (o.updatedAt) ms = Math.max(ms, parseTimeMsConsultant(o.updatedAt));
+                    if (ms <= 0 && o.createdAt) ms = parseTimeMsConsultant(o.createdAt);
+                    return ms;
+                }
+                /** 已完成列表：客户取消、超时过期（顾问需感知） */
+                function doneHubSignalMs(o) {
+                    if (!o) return 0;
+                    if (o.status === 'cancelled' && o.cancelledAt) {
+                        return parseTimeMsConsultant(o.cancelledAt);
+                    }
+                    if (o.status === 'expired' && o.expiredAt) {
+                        return parseTimeMsConsultant(o.expiredAt);
+                    }
+                    return 0;
+                }
+                function refreshOrdersHubDot() {
+                    var dot = document.getElementById('ordersHubDot');
+                    if (!dot || !token) return;
+                    dot.setAttribute(
+                        'title',
+                        '接单中心有新动态：待接单、加急、订单取消或过期等，请查看'
+                    );
+                    var rawSeen = localStorage.getItem(CONSULTANT_HUB_SEEN_KEY);
+                    var seen = 0;
+                    if (rawSeen != null && rawSeen !== '') {
+                        seen = parseInt(rawSeen, 10);
+                        if (isNaN(seen)) seen = 0;
+                    }
+                    fetch(API + '/api/order/consultant/orders', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    })
+                        .then(function (r) {
+                            return r.json().then(function (data) {
+                                return { ok: r.ok, data: data };
+                            });
+                        })
+                        .then(function (res) {
+                            if (!res.ok) return;
+                            var data = res.data || {};
+                            var pending = (data.data && data.data.pending) || [];
+                            var done = (data.data && data.data.done) || [];
+                            var hasNew =
+                                pending.some(function (o) {
+                                    return pendingHubSignalMs(o) > seen;
+                                }) ||
+                                done.some(function (o) {
+                                    return doneHubSignalMs(o) > seen;
+                                });
+                            if (hasNew) dot.classList.remove('hide');
+                            else dot.classList.add('hide');
+                        })
+                        .catch(function () {});
+                }
+                window.__dashboardRefreshOrdersHubDot = refreshOrdersHubDot;
+                refreshOrdersHubDot();
+                setInterval(refreshOrdersHubDot, 20000);
+            }
+
+            var welcomeEl = document.getElementById('welcome');
+            try {
+                var b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                var payload = JSON.parse(decodeURIComponent(escape(atob(b64))));
+                welcomeEl.textContent = '欢迎，' + (payload.phone || '用户');
+            } catch (e) {
+                welcomeEl.textContent = '欢迎，用户';
+            }
+
+            (async function () {
+                try {
+                    var profileRes = await fetch(API + '/auth/profile', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    var profileData = await profileRes.json();
+                    if (!profileRes.ok) return;
+                    var uidKey = role === 'consultant' ? 'consultantId' : 'userId';
+                    var pid = profileData.user && profileData.user[uidKey];
+                    if (pid == null) return;
+                    var userRes = await fetch(API + '/auth/users/' + pid, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    var userData = await userRes.json();
+                    if (!userRes.ok) return;
+                    var u = userData.user;
+                    var isCompleted = u && u.isCompleted === true;
+                    var dot = document.getElementById('redDot');
+                    if (isCompleted) dot.classList.add('hide'); else dot.classList.remove('hide');
+                    if (u && u.name && String(u.name).trim()) {
+                        welcomeEl.textContent = '欢迎，' + u.name.trim();
+                    } else if (u && u.phone) {
+                        welcomeEl.textContent = '欢迎，' + u.phone;
+                    }
+                } catch (e) {}
+            })();
+
+            loadConversations();
+            setInterval(loadConversations, 25000);
+            document.addEventListener('visibilitychange', function () {
+                if (!document.hidden) {
+                    loadConversations();
+                    if (getRole() === 'consultant' && typeof window.__dashboardRefreshOrdersHubDot === 'function') {
+                        window.__dashboardRefreshOrdersHubDot();
+                    }
+                    if (getRole() === 'user' && typeof window.__dashboardRefreshUserOrdersDot === 'function') {
+                        window.__dashboardRefreshUserOrdersDot();
+                    }
+                }
+            });
+
+            var allowedStart = ['messages', 'slot1', 'slot2', 'profile', 'settings'];
+            var startParams = new URLSearchParams(window.location.search);
+            var startPanel = startParams.get('panel') || 'messages';
+            if (allowedStart.indexOf(startPanel) === -1) startPanel = 'messages';
+            showPanel(startPanel);
+            if (startParams.get('panel') && typeof history.replaceState === 'function') {
+                startParams.delete('panel');
+                var qs = startParams.toString();
+                var cleanPath = window.location.pathname + (qs ? '?' + qs : '') + window.location.hash;
+                history.replaceState(null, '', cleanPath);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单聊天</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+            background: linear-gradient(160deg, #2d1b4e 0%, #1a1a2e 50%, #16213e 100%);
+            padding: 0;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: rgba(0,0,0,0.2);
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .header a {
+            color: rgba(255,255,255,0.95);
+            text-decoration: none;
+            font-size: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 17px;
+            color: #fff;
+            flex: 1;
+            min-width: 120px;
+        }
+        .order-tag {
+            font-size: 12px;
+            color: rgba(255,255,255,0.7);
+            width: 100%;
+            margin-top: 4px;
+            padding-left: 0;
+        }
+        .chat-wrap {
+            flex: 1;
+            max-width: 480px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255,255,255,0.97);
+            border-radius: 20px 20px 0 0;
+            min-height: calc(100vh - 120px);
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
+        }
+        .messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #f0f2f5;
+        }
+        .messages .placeholder {
+            text-align: center;
+            color: #888;
+            font-size: 14px;
+            padding: 48px 20px;
+            line-height: 1.6;
+        }
+        .msg-tip {
+            margin: 4px auto 8px;
+            max-width: 90%;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            text-align: center;
+            line-height: 1.5;
+        }
+        .msg-tip.info { background: #e6f7ff; color: #0958d9; border: 1px solid #91caff; }
+        .msg-tip.warn { background: #fff7e6; color: #ad6800; border: 1px solid #ffd591; }
+        .msg-tip.err { background: #fff2f0; color: #cf1322; border: 1px solid #ffccc7; }
+        .msg-row {
+            display: flex;
+            flex-direction: column;
+            max-width: 85%;
+            align-self: flex-start;
+        }
+        .msg-row.mine {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
+        .bubble {
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-size: 15px;
+            line-height: 1.45;
+            word-break: break-word;
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .msg-row.mine .bubble {
+            background: linear-gradient(135deg, #95de64, #73d13d);
+            border-color: #73d13d;
+            color: #1f1f1f;
+        }
+        .msg-meta {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+            padding: 0 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .msg-row.mine .msg-meta {
+            justify-content: flex-end;
+        }
+        .msg-status.sending { color: #faad14; }
+        .msg-status.sent { color: #8c8c8c; }
+        .msg-status.read { color: #52c41a; }
+        .msg-status.fail { color: #f5222d; }
+        .input-area {
+            padding: 12px 12px 24px;
+            border-top: 1px solid #e8e8e8;
+            background: #fafafa;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .input-area input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #d9d9d9;
+            border-radius: 22px;
+            font-size: 15px;
+            background: #f5f5f5;
+        }
+        .input-area input:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+        .input-area button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 22px;
+            font-size: 15px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #52c41a, #389e0d);
+            color: #fff;
+            cursor: pointer;
+        }
+        .input-area button:disabled {
+            cursor: not-allowed;
+            opacity: 0.55;
+        }
+        .input-hint {
+            font-size: 11px;
+            color: #999;
+            padding: 0 12px 10px;
+            text-align: center;
+        }
+        .full-err {
+            padding: 48px 24px;
+            text-align: center;
+            color: #ffccc7;
+        }
+    </style>
+</head>
+<body>
+    <div id="fatalErr" class="full-err" style="display:none;"></div>
+
+    <div id="chatApp">
+        <div class="header">
+            <div style="display:flex;align-items:center;gap:12px;width:100%;flex-wrap:wrap;">
+                <a href="my-orders.html" id="backLink">← 返回</a>
+                <h1 id="title">订单聊天</h1>
+            </div>
+            <div class="order-tag" id="orderTag"></div>
+        </div>
+        <div class="chat-wrap">
+            <div class="messages" id="messages">
+                <p class="placeholder" id="mainPlaceholder">暂无消息<br><span style="font-size:13px;color:#aaa">服务开始后可在此对话</span></p>
+                <div class="msg-tip info" id="loadTip" style="display:none;"></div>
+            </div>
+            <div class="input-hint" id="inputHint">加载订单信息中…</div>
+            <div class="input-area">
+                <input type="text" id="chatInput" placeholder="输入消息…" maxlength="2000" autocomplete="off" disabled>
+                <button type="button" id="btnSend" disabled>发送</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/embed-parent-nav.js"></script>
+    <script>
+        var API = window.location.origin;
+        var token = localStorage.getItem('token');
+        var orderId = parseInt(new URLSearchParams(location.search).get('orderId') || new URLSearchParams(location.search).get('id'), 10);
+        var pageParams = new URLSearchParams(location.search);
+
+        function getRole() {
+            try {
+                var b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                return JSON.parse(decodeURIComponent(escape(atob(b64)))).role || 'user';
+            } catch (e) { return 'user'; }
+        }
+
+        function payloadFromToken() {
+            try {
+                var b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                return JSON.parse(decodeURIComponent(escape(atob(b64))));
+            } catch (e) { return {}; }
+        }
+
+        var chatApp = document.getElementById('chatApp');
+        var fatal = document.getElementById('fatalErr');
+        var messagesEl = document.getElementById('messages');
+        var mainPlaceholder = document.getElementById('mainPlaceholder');
+        var loadTip = document.getElementById('loadTip');
+        var chatInput = document.getElementById('chatInput');
+        var btnSend = document.getElementById('btnSend');
+        var inputHint = document.getElementById('inputHint');
+
+        var myRole = null;
+        var chatReady = false;
+        var ws = null;
+        var markReadTimer = null;
+
+        function hidePlaceholder() {
+            if (mainPlaceholder) mainPlaceholder.style.display = 'none';
+        }
+
+        /**
+         * 聊天页应在顶层全屏打开；返回时用 ?panel= 回到对应底栏 Tab，避免 history.back 把 iframe 恢复到空白态。
+         * returnPanel: messages | slot1 | slot2 | profile | settings
+         */
+        function configureBackNavigation() {
+            var backEl = document.getElementById('backLink');
+            if (!backEl) return;
+            var allowed = { messages: 1, slot1: 1, slot2: 1, profile: 1, settings: 1 };
+            var returnPanel = pageParams.get('returnPanel');
+            if (!returnPanel) {
+                try {
+                    returnPanel = sessionStorage.getItem('orderChatReturnPanel');
+                } catch (e) {}
+            }
+            try {
+                sessionStorage.removeItem('orderChatReturnPanel');
+            } catch (e2) {}
+            returnPanel = String(returnPanel || 'messages').toLowerCase();
+            if (!allowed[returnPanel]) returnPanel = 'messages';
+
+            var inIframe = false;
+            try {
+                inIframe = window.parent !== window.self;
+            } catch (e) {
+                inIframe = true;
+            }
+
+            function dashboardUrlWithPanel(panel) {
+                var u = new URL('dashboard.html', location.href);
+                u.searchParams.set('panel', panel);
+                return u.href;
+            }
+
+            function goBack(e) {
+                if (e) e.preventDefault();
+                if (inIframe) {
+                    try {
+                        if (window.parent !== window && typeof window.parent.__dashboardShowPanel === 'function') {
+                            window.parent.__dashboardShowPanel(returnPanel);
+                            return;
+                        }
+                    } catch (err) {}
+                }
+                window.location.href = dashboardUrlWithPanel(returnPanel);
+            }
+
+            backEl.href = '#';
+            backEl.onclick = goBack;
+        }
+
+        function scrollToBottom() {
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function statusClass(label) {
+            if (label === '发送中') return 'sending';
+            if (label === '已读') return 'read';
+            if (label === '失败') return 'fail';
+            return 'sent';
+        }
+
+        /** HTTP 返回或 WS 先到：把「发送中」临时行落实为服务端 id 与状态 */
+        function finalizeMineOutgoing(dto, tempKey) {
+            var row = tempKey ? messagesEl.querySelector('.msg-row.mine[data-temp-key="' + tempKey + '"]') : null;
+            if (!row) row = messagesEl.querySelector('.msg-row.mine[data-msg-id="' + dto.id + '"]');
+            if (!row) return;
+            row.removeAttribute('data-temp-key');
+            row.setAttribute('data-msg-id', String(dto.id));
+            var st = row.querySelector('.msg-status');
+            if (st) {
+                var label = dto.isRead ? '已读' : '已发送';
+                st.textContent = label;
+                st.className = 'msg-status ' + statusClass(label);
+            }
+        }
+
+        /** 我发出的消息旁显示：发送中 / 已发送 / 已读 */
+        function renderBubbleRow(text, isMine, opts) {
+            opts = opts || {};
+            var row = document.createElement('div');
+            row.className = 'msg-row' + (isMine ? ' mine' : '');
+            if (opts.msgId != null) row.setAttribute('data-msg-id', String(opts.msgId));
+            if (opts.tempKey) row.setAttribute('data-temp-key', opts.tempKey);
+
+            var bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.textContent = text;
+            row.appendChild(bubble);
+
+            if (isMine) {
+                var meta = document.createElement('div');
+                meta.className = 'msg-meta';
+                var st = document.createElement('span');
+                st.className = 'msg-status ' + statusClass(opts.statusLabel || '已发送');
+                st.textContent = opts.statusLabel || '已发送';
+                meta.appendChild(st);
+                row.appendChild(meta);
+            }
+
+            messagesEl.appendChild(row);
+            scrollToBottom();
+            return row;
+        }
+
+        function setMineStatusByMsgId(msgId, statusLabel) {
+            var row = messagesEl.querySelector('.msg-row.mine[data-msg-id="' + msgId + '"]');
+            if (!row) return;
+            var st = row.querySelector('.msg-status');
+            if (st && statusLabel) {
+                st.textContent = statusLabel;
+                st.className = 'msg-status ' + statusClass(statusLabel);
+            }
+        }
+
+        function applyReadReceipt(readerRole, messageIds) {
+            if (!messageIds || !messageIds.length) return;
+            if (readerRole === myRole) return;
+            messageIds.forEach(function (id) {
+                setMineStatusByMsgId(id, '已读');
+            });
+        }
+
+        function addMessageFromServer(dto, skipIfExists) {
+            if (skipIfExists && messagesEl.querySelector('[data-msg-id="' + dto.id + '"]')) return;
+            var isMine = dto.senderRole === myRole;
+            var label = isMine ? (dto.isRead ? '已读' : '已发送') : null;
+            renderBubbleRow(dto.content, isMine, { msgId: dto.id, statusLabel: label });
+        }
+
+        async function loadHistory() {
+            var res = await fetch(API + '/api/order/' + orderId + '/chat/messages?limit=200', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            var data = await res.json();
+            if (!res.ok) throw new Error(data.message || '加载消息失败');
+            var list = (data.data && data.data.list) || [];
+            list.forEach(function (dto) {
+                addMessageFromServer(dto, false);
+            });
+            if (list.length) hidePlaceholder();
+            scrollToBottom();
+        }
+
+        function scheduleMarkRead() {
+            if (!chatReady) return;
+            clearTimeout(markReadTimer);
+            markReadTimer = setTimeout(function () {
+                fetch(API + '/api/order/' + orderId + '/chat/read', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+                }).catch(function () {});
+            }, 400);
+        }
+
+        function connectWs() {
+            if (ws) try { ws.close(); } catch (e) {}
+            var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            var url = proto + '//' + location.host + '/ws/order-chat?token=' + encodeURIComponent(token) + '&orderId=' + orderId;
+            ws = new WebSocket(url);
+            ws.onmessage = function (ev) {
+                try {
+                    var msg = JSON.parse(ev.data);
+                } catch (e) { return; }
+                if (msg.type === 'chat' && msg.id != null) {
+                    var sr = msg.senderRole || msg.role;
+                    var fromOther = sr !== myRole;
+                    if (fromOther) {
+                        addMessageFromServer({
+                            id: msg.id,
+                            senderRole: sr,
+                            content: msg.text != null ? msg.text : msg.content,
+                            isRead: !!msg.isRead
+                        }, true);
+                        hidePlaceholder();
+                        scheduleMarkRead();
+                        return;
+                    }
+                    var tempRow = messagesEl.querySelector('.msg-row.mine[data-temp-key] .msg-status.sending');
+                    if (tempRow) {
+                        var parent = tempRow.closest('.msg-row.mine');
+                        if (parent && parent.getAttribute('data-temp-key')) {
+                            parent.removeAttribute('data-temp-key');
+                            parent.setAttribute('data-msg-id', String(msg.id));
+                            var label = msg.isRead ? '已读' : '已发送';
+                            tempRow.textContent = label;
+                            tempRow.className = 'msg-status ' + statusClass(label);
+                        }
+                    } else if (!messagesEl.querySelector('[data-msg-id="' + msg.id + '"]')) {
+                        addMessageFromServer({
+                            id: msg.id,
+                            senderRole: myRole,
+                            content: msg.text != null ? msg.text : msg.content,
+                            isRead: !!msg.isRead
+                        }, false);
+                    }
+                    hidePlaceholder();
+                    return;
+                }
+                if (msg.type === 'read_receipt' && msg.messageIds) {
+                    applyReadReceipt(msg.readerRole, msg.messageIds);
+                }
+            };
+            ws.onclose = function () {};
+        }
+
+        async function sendText() {
+            if (!chatReady) return;
+            var text = chatInput.value.trim();
+            if (!text) return;
+            chatInput.value = '';
+            var tempKey = 't-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+            hidePlaceholder();
+            renderBubbleRow(text, true, { tempKey: tempKey, statusLabel: '发送中' });
+
+            try {
+                var res = await fetch(API + '/api/order/' + orderId + '/chat/messages', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: text, contentType: 'text' })
+                });
+                var data = await res.json();
+                if (!res.ok) throw new Error(data.message || '发送失败');
+                var dto = data.data;
+                finalizeMineOutgoing(dto, tempKey);
+                var leftover = messagesEl.querySelector('.msg-row.mine[data-temp-key="' + tempKey + '"]');
+                if (leftover) leftover.remove();
+            } catch (e) {
+                var row = messagesEl.querySelector('.msg-row.mine[data-temp-key="' + tempKey + '"]');
+                if (row) {
+                    var st = row.querySelector('.msg-status');
+                    if (st) {
+                        st.textContent = '失败';
+                        st.className = 'msg-status fail';
+                    }
+                }
+                alert(e.message || '发送失败');
+            }
+        }
+
+        if (!token) {
+            chatApp.style.display = 'none';
+            fatal.style.display = 'block';
+            fatal.textContent = '请先登录';
+            setTimeout(function () { location.href = 'login.html'; }, 1200);
+        } else if (!orderId) {
+            chatApp.style.display = 'none';
+            fatal.style.display = 'block';
+            fatal.textContent = '缺少订单号，请从「我的订单」或「接单中心」进入';
+        } else {
+            myRole = getRole();
+            configureBackNavigation();
+            document.getElementById('orderTag').textContent = '订单 #' + orderId;
+
+            loadTip.style.display = 'block';
+            loadTip.className = 'msg-tip info';
+            loadTip.textContent = '正在核对订单信息…';
+
+            (async function () {
+                try {
+                    var res = await fetch(API + '/api/order/detail/' + orderId, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    var data = await res.json();
+                    if (!res.ok) {
+                        loadTip.className = 'msg-tip err';
+                        loadTip.textContent = data.message || '订单信息加载失败';
+                        return;
+                    }
+                    var d = data.data || {};
+                    var payload = payloadFromToken();
+                    var isCustomer = myRole === 'user';
+                    if (isCustomer && (d.userId == null || Number(d.userId) !== Number(payload.userId))) {
+                        loadTip.className = 'msg-tip err';
+                        loadTip.textContent = '无权查看此订单';
+                        return;
+                    }
+                    if (!isCustomer && (d.consultantId == null || Number(d.consultantId) !== Number(payload.consultantId))) {
+                        loadTip.className = 'msg-tip err';
+                        loadTip.textContent = '无权查看此订单';
+                        return;
+                    }
+                    var otherName = isCustomer
+                        ? (d.consultantName ? d.consultantName : '顾问 #' + d.consultantId)
+                        : (d.userName ? d.userName : '客户 #' + d.userId);
+                    document.getElementById('title').textContent = '与 ' + otherName + ' 对话';
+
+                    if (d.status !== 'in_service') {
+                        loadTip.className = 'msg-tip warn';
+                        loadTip.textContent =
+                            '当前订单状态为「' +
+                            (d.status || '--') +
+                            '」，仅可查看历史消息；服务进行中才可继续发送。';
+                        inputHint.textContent = '非服务中，无法发送消息';
+                        chatInput.disabled = true;
+                        btnSend.disabled = true;
+                        try {
+                            await loadHistory();
+                        } catch (e) {}
+                        return;
+                    }
+
+                    loadTip.style.display = 'none';
+                    chatReady = true;
+                    inputHint.textContent = '消息状态：发送中 → 已发送 → 对方阅读后显示已读';
+                    chatInput.disabled = false;
+                    btnSend.disabled = false;
+
+                    await loadHistory();
+                    connectWs();
+                    scheduleMarkRead();
+
+                    btnSend.onclick = sendText;
+                    chatInput.onkeydown = function (e) {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            sendText();
+                        }
+                    };
+                } catch (e) {
+                    loadTip.className = 'msg-tip err';
+                    loadTip.textContent = '网络异常，无法核对订单';
+                }
+            })();
+        }
+    </script>
+</body>
+</html>

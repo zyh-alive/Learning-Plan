@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单支付</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(165deg, #1a1a2e, #16213e);
+            padding: 24px 16px;
+            color: #fff;
+        }
+        .card {
+            max-width: 400px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 16px;
+            padding: 28px 22px;
+            color: #333;
+        }
+        h1 { margin: 0 0 8px; font-size: 20px; text-align: center; }
+        .sub { text-align: center; font-size: 13px; color: #888; margin-bottom: 20px; }
+        .price { font-size: 32px; font-weight: 800; color: #f5576c; text-align: center; margin: 16px 0; }
+        .price span { font-size: 14px; color: #999; font-weight: 600; }
+        .bal { text-align: center; font-size: 14px; color: #666; margin-bottom: 20px; }
+        .row { font-size: 14px; margin-bottom: 10px; color: #555; }
+        .actions { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+        .actions button, .actions a {
+            display: block;
+            text-align: center;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-pay {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+        }
+        .btn-pay:disabled { opacity: 0.5; }
+        .btn-cancel { background: #f5f5f5; color: #666; }
+        .err { color: #cf1322; text-align: center; font-size: 14px; margin-top: 12px; }
+        .back { display: block; text-align: center; margin-top: 20px; color: rgba(255,255,255,0.85); font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="card" id="main">
+        <h1>确认支付</h1>
+        <p class="sub">付款后顾问方可接单并开始服务；若取消订单，已付金额将退回您的账户</p>
+        <div id="box"></div>
+    </div>
+    <a class="back" href="#" id="footerBack">我的订单</a>
+    <script>
+        var API = window.location.origin;
+        var token = localStorage.getItem('token');
+        var payParams = new URLSearchParams(location.search);
+        var id = parseInt(payParams.get('id'), 10);
+        var allowedPanels = ['messages', 'slot1', 'slot2', 'profile', 'settings'];
+        var returnPanelCancel = String(payParams.get('returnPanel') || 'slot2').toLowerCase();
+        if (allowedPanels.indexOf(returnPanelCancel) < 0) returnPanelCancel = 'slot2';
+
+        function goDashboardPanel(panel) {
+            var u = new URL('dashboard.html', location.href);
+            u.searchParams.set('panel', panel);
+            var href = u.href;
+            try {
+                if (window.top !== window) {
+                    window.top.location.href = href;
+                } else {
+                    window.location.href = href;
+                }
+            } catch (e) {
+                window.location.href = href;
+            }
+        }
+
+        function wireFooterBack() {
+            var el = document.getElementById('footerBack');
+            if (!el) return;
+            el.textContent = returnPanelCancel === 'slot1' ? '← 返回顾问列表' : '← 我的订单';
+            el.onclick = function (e) {
+                e.preventDefault();
+                goDashboardPanel(returnPanelCancel);
+            };
+        }
+        wireFooterBack();
+
+        function getRole() {
+            try {
+                return JSON.parse(decodeURIComponent(escape(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))).role;
+            } catch (e) { return ''; }
+        }
+        if (!token || getRole() !== 'user') location.href = 'login.html';
+        else if (!id) document.getElementById('box').innerHTML = '<p class="err">缺少订单号</p>';
+        else {
+            (async function () {
+                var res = await fetch(API + '/api/order/detail/' + id, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                var j = await res.json();
+                if (!res.ok) {
+                    document.getElementById('box').innerHTML = '<p class="err">' + (j.message || '加载失败') + '</p>';
+                    return;
+                }
+                var d = j.data || {};
+                if (d.paidAt) {
+                    document.getElementById('box').innerHTML =
+                        '<p style="text-align:center;color:#52c41a">该订单已支付</p>' +
+                        '<a class="btn-cancel" style="margin-top:16px" href="#" id="payPaidBack">返回订单</a>';
+                    document.getElementById('payPaidBack').onclick = function (e) {
+                        e.preventDefault();
+                        goDashboardPanel('slot2');
+                    };
+                    return;
+                }
+                if (d.status === 'cancelled' || d.status === 'completed' || d.status === 'expired') {
+                    document.getElementById('box').innerHTML = '<p class="err">订单已结束，无法支付</p>';
+                    return;
+                }
+                var uid = (function () {
+                    try {
+                        return JSON.parse(decodeURIComponent(escape(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))).userId;
+                    } catch (e) { return null; }
+                })();
+                var ur = await fetch(API + '/auth/users/' + uid, { headers: { 'Authorization': 'Bearer ' + token } });
+                var uj = await ur.json();
+                var coin = (ur.ok && uj.user && uj.user.coin != null) ? Number(uj.user.coin) : 0;
+                var price = Number(d.price) || 0;
+                document.getElementById('box').innerHTML =
+                    '<div class="row">订单 #' + d.orderId + '</div>' +
+                    '<div class="row">服务：' + (d.serviceType || '') + '</div>' +
+                    '<div class="price">' + price + '<span> 金币（本单付款金额）</span></div>' +
+                    '<div class="bal">当前余额：<strong>' + coin + '</strong> 金币</div>' +
+                    '<div class="actions">' +
+                    '<button type="button" class="btn-pay" id="btnPay">确认付款</button>' +
+                    '<a class="btn-cancel" href="#" id="paySkipBack">暂不支付，返回</a></div>' +
+                    '<p class="err" id="err"></p>';
+
+                document.getElementById('paySkipBack').onclick = function (e) {
+                    e.preventDefault();
+                    goDashboardPanel(returnPanelCancel);
+                };
+
+                document.getElementById('btnPay').onclick = async function () {
+                    var btn = document.getElementById('btnPay');
+                    var errEl = document.getElementById('err');
+                    errEl.textContent = '';
+                    btn.disabled = true;
+                    try {
+                        var pr = await fetch(API + '/api/order/' + id + '/pay', {
+                            method: 'POST',
+                            headers: { 'Authorization': 'Bearer ' + token }
+                        });
+                        var pj = await pr.json();
+                        if (!pr.ok) {
+                            errEl.textContent = pj.message || '支付失败';
+                            btn.disabled = false;
+                            return;
+                        }
+                        alert(pj.message || '支付成功');
+                        goDashboardPanel('slot2');
+                    } catch (e) {
+                        errEl.textContent = '网络错误';
+                        btn.disabled = false;
+                    }
+                };
+            })();
+        }
+    </script>
+</body>
+</html>

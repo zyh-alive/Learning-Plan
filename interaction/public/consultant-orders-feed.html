@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单与评价</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+            background: linear-gradient(165deg, #1a1a2e 0%, #16213e 45%, #0f3460 100%);
+            padding: 16px 16px 32px;
+        }
+        .top {
+            max-width: 440px;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .back {
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+            font-size: 15px;
+        }
+        .back:hover { text-decoration: underline; }
+        h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            flex: 1;
+        }
+        .sub-hint {
+            max-width: 440px;
+            margin: 0 auto 14px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.55);
+            line-height: 1.5;
+        }
+        .list-wrap { max-width: 440px; margin: 0 auto; }
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 16px 16px 18px;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.15);
+        }
+        .card-head {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 12px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .oid {
+            font-size: 13px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        .cust {
+            font-size: 13px;
+            color: #666;
+        }
+        .stype {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1a1a1a;
+            width: 100%;
+        }
+        .status-pill {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+        .st-pr { background: #fff7e6; color: #d46b08; }
+        .st-done { background: #f6ffed; color: #237804; }
+        .block-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #a0aec0;
+            letter-spacing: 0.08em;
+            margin: 10px 0 6px;
+        }
+        .demand {
+            font-size: 14px;
+            color: #444;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .star-mini-track {
+            position: relative;
+            height: 24px;
+            width: 102px;
+            flex-shrink: 0;
+        }
+        .star-mini-gray, .star-mini-gold {
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-size: 18px;
+            line-height: 24px;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        .star-mini-gray { color: #e8e8e8; z-index: 1; }
+        .star-mini-gold-wrap {
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 2;
+            overflow: hidden;
+            height: 24px;
+            width: 0;
+        }
+        .star-mini-gold { color: #faad14; }
+        .rev-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 12px;
+        }
+        .rev-score {
+            font-size: 17px;
+            font-weight: 800;
+            color: #1a1a1a;
+        }
+        .rev-text {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.5;
+            margin-top: 6px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .rev-wait {
+            font-size: 13px;
+            color: #d48806;
+            font-weight: 600;
+        }
+        .empty {
+            text-align: center;
+            padding: 36px 16px;
+            color: rgba(255,255,255,0.65);
+            font-size: 14px;
+        }
+        .err { color: #ffccc7; }
+    </style>
+</head>
+<body>
+    <script src="js/embed-parent-nav.js"></script>
+    <div class="top">
+        <a class="back" id="backLink" href="profile.html">← 返回</a>
+        <h1 id="pageTitle">订单与评价</h1>
+    </div>
+    <p class="sub-hint" id="subHint"></p>
+    <div class="list-wrap" id="listWrap"><p class="empty">加载中…</p></div>
+    <script>
+        var API = window.location.origin;
+        var token = localStorage.getItem('token');
+        var params = new URLSearchParams(location.search);
+        var filter = params.get('filter') === 'all' ? 'all' : 'reviews_only';
+        var embed = params.get('embed') === '1';
+
+        function esc(t) {
+            return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        }
+        function starHtml(rating) {
+            var r = Math.max(0, Math.min(5, Number(rating) || 0));
+            var pct = (r / 5) * 100;
+            return '<div class="star-mini-track" aria-hidden="true">' +
+                '<span class="star-mini-gray">★★★★★</span>' +
+                '<div class="star-mini-gold-wrap" style="width:' + pct + '%">' +
+                '<span class="star-mini-gold">★★★★★</span></div></div>';
+        }
+        function statusPill(st) {
+            if (st === 'pending_review') return '<span class="status-pill st-pr">待客户评价</span>';
+            if (st === 'completed') return '<span class="status-pill st-done">已完成</span>';
+            return '<span class="status-pill">' + esc(st) + '</span>';
+        }
+
+        function getRole() {
+            try {
+                var b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                return JSON.parse(decodeURIComponent(escape(atob(b64)))).role || '';
+            } catch (e) { return ''; }
+        }
+
+        var backLink = document.getElementById('backLink');
+        if (embed) backLink.href = 'profile.html?embed=1';
+
+        if (!token || getRole() !== 'consultant') {
+            window.location.href = 'login.html';
+        } else {
+            document.getElementById('pageTitle').textContent =
+                filter === 'all' ? '我的订单与评价' : '客户评价';
+            document.getElementById('subHint').textContent =
+                filter === 'all'
+                    ? '含「待客户评价」与「已完成」订单；每条展示服务类型、客户需求及评价（若有）。'
+                    : '仅展示客户已提交评价的订单。';
+
+            (async function () {
+                var wrap = document.getElementById('listWrap');
+                try {
+                    var res = await fetch(
+                        API + '/api/order/consultant/orders-review-feed?filter=' + encodeURIComponent(filter),
+                        { headers: { 'Authorization': 'Bearer ' + token } }
+                    );
+                    var j = await res.json();
+                    if (res.status === 401 || res.status === 403) {
+                        localStorage.removeItem('token');
+                        window.location.href = 'login.html';
+                        return;
+                    }
+                    if (!res.ok) {
+                        wrap.innerHTML = '<p class="empty err">' + esc(j.message || '加载失败') + '</p>';
+                        return;
+                    }
+                    var list = (j.data && j.data.list) || [];
+                    if (list.length === 0) {
+                        wrap.innerHTML = '<p class="empty">' +
+                            (filter === 'all' ? '暂无相关订单' : '暂无评价') + '</p>';
+                        return;
+                    }
+                    wrap.innerHTML = list.map(function (it) {
+                        var hasRev = it.rating != null;
+                        var revBlock = hasRev
+                            ? '<div class="block-label">客户评价</div><div class="rev-row">' +
+                              starHtml(it.rating) +
+                              '<span class="rev-score">' + esc(Number(it.rating).toFixed(1)) + '</span><span style="font-size:12px;color:#888">/ 5</span></div>' +
+                              (it.reviewContent
+                                  ? '<div class="rev-text">' + esc(it.reviewContent) + '</div>'
+                                  : '<div class="rev-text" style="color:#999">（无文字评价）</div>')
+                            : '<div class="block-label">客户评价</div><p class="rev-wait">客户尚未评价</p>';
+                        return '<div class="card">' +
+                            '<div class="card-head">' +
+                            '<span class="oid">订单 #' + esc(String(it.orderId)) + '</span>' +
+                            (it.customerLabel ? '<span class="cust">' + esc(it.customerLabel) + '</span>' : '') +
+                            statusPill(it.orderStatus) +
+                            '<div class="stype">' + esc(it.serviceType || '—') + '</div>' +
+                            '</div>' +
+                            '<div class="block-label">客户需求</div>' +
+                            '<div class="demand">' + esc(it.serviceContent || '—') + '</div>' +
+                            revBlock +
+                            '</div>';
+                    }).join('');
+                } catch (e) {
+                    wrap.innerHTML = '<p class="empty err">网络错误</p>';
+                }
+            })();
+        }
+    </script>
+</body>
+</html>

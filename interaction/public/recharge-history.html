@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>充值记录</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+            background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            padding: 20px 16px 40px;
+        }
+        .back { color: rgba(255,255,255,0.85); text-decoration: none; font-size: 15px; display: inline-block; margin-bottom: 20px; }
+        .balance-hero {
+            border-radius: 20px;
+            padding: 22px;
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            text-align: center;
+            max-width: 400px;
+            margin: 0 auto 20px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+        }
+        .balance-hero .label { font-size: 13px; color: rgba(255,255,255,0.85); }
+        .balance-hero .amount { font-size: 32px; font-weight: 800; color: #fff; margin-top: 6px; }
+        .list-wrap { max-width: 400px; margin: 0 auto; }
+        .item {
+            background: rgba(255,255,255,0.97);
+            border-radius: 14px;
+            padding: 16px 18px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+        .item .left .amt { font-size: 20px; font-weight: 700; color: #52c41a; }
+        .item .left .amt::before { content: '+'; font-size: 16px; }
+        .item .left .time { font-size: 12px; color: #999; margin-top: 6px; }
+        .item .after { text-align: right; }
+        .item .after .t { font-size: 11px; color: #aaa; }
+        .item .after .v { font-size: 15px; font-weight: 600; color: #333; margin-top: 2px; }
+        .empty { text-align: center; color: rgba(255,255,255,0.7); padding: 48px 16px; }
+        .pager { display: flex; justify-content: center; gap: 16px; margin-top: 20px; align-items: center; }
+        .pager button {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            cursor: pointer;
+        }
+        .pager button:disabled { opacity: 0.4; }
+        .pager span { color: rgba(255,255,255,0.8); font-size: 14px; }
+    </style>
+</head>
+<body>
+    <a class="back" href="coin-wallet.html">← 返回金币中心</a>
+    <div class="balance-hero">
+        <div class="label">当前余额</div>
+        <div class="amount" id="bal">--</div>
+    </div>
+    <div class="list-wrap" id="wrap"><p class="empty">加载中…</p></div>
+    <div class="pager" id="pager" style="display:none;">
+        <button type="button" id="prev">上一页</button>
+        <span id="pg"></span>
+        <button type="button" id="next">下一页</button>
+    </div>
+    <script>
+        var API = window.location.origin;
+        var token = localStorage.getItem('token');
+        var page = 1;
+        var limit = 100;
+        var totalPages = 1;
+        function getRole() {
+            try {
+                var b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                var p = JSON.parse(decodeURIComponent(escape(atob(b64))));
+                if (p.role) return p.role;
+            } catch (e) {}
+            return 'user';
+        }
+        if (!token) location.href = 'login.html';
+        else if (getRole() !== 'user') location.href = 'dashboard.html';
+
+        function fmt(t) {
+            if (!t) return '--';
+            try { return new Date(t).toLocaleString('zh-CN'); } catch (e) { return t; }
+        }
+
+        function loadBal() {
+            fetch(API + '/api/recharge/balance', { headers: { 'Authorization': 'Bearer ' + token } })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    document.getElementById('bal').textContent = (d.data && d.data.coin != null) ? d.data.coin : '0';
+                });
+        }
+
+        function load() {
+            var wrap = document.getElementById('wrap');
+            wrap.innerHTML = '<p class="empty">加载中…</p>';
+            fetch(API + '/api/recharge/history?page=' + page + '&limit=' + limit, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            }).then(function (r) { return r.json().then(function (d) { return { r: r, d: d }; }); })
+            .then(function (x) {
+                if (x.r.status === 401 || x.r.status === 403) {
+                    localStorage.removeItem('token');
+                    location.href = 'login.html';
+                    return;
+                }
+                if (!x.r.ok) {
+                    wrap.innerHTML = '<p class="empty">' + (x.d.message || '加载失败') + '</p>';
+                    return;
+                }
+                var list = (x.d.data && x.d.data.list) || [];
+                if (!Array.isArray(list)) list = [];
+                var pg = (x.d.data && x.d.data.pagination) || {};
+                totalPages = pg.totalPages || 1;
+                if (list.length === 0) {
+                    wrap.innerHTML = '<p class="empty">暂无充值记录</p>';
+                    document.getElementById('pager').style.display = 'none';
+                    return;
+                }
+                wrap.innerHTML = list.map(function (it) {
+                    return '<div class="item">' +
+                        '<div class="left"><div class="amt">' + it.amount + '</div><div class="time">' + fmt(it.rechargeTime) + '</div></div>' +
+                        '<div class="after"><div class="t">充值后余额</div><div class="v">' + it.balanceAfter + '</div></div></div>';
+                }).join('');
+                document.getElementById('pg').textContent = page + ' / ' + totalPages;
+                document.getElementById('prev').disabled = page <= 1;
+                document.getElementById('next').disabled = page >= totalPages;
+                document.getElementById('pager').style.display = totalPages > 1 ? 'flex' : 'none';
+            });
+        }
+        loadBal();
+        load();
+        document.getElementById('prev').onclick = function () { if (page > 1) { page--; load(); } };
+        document.getElementById('next').onclick = function () { if (page < totalPages) { page++; load(); } };
+    </script>
+</body>
+</html>

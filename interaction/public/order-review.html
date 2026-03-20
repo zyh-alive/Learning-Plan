@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>评价服务</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+            background: linear-gradient(165deg, #1a1a2e, #16213e);
+            padding: 24px 16px;
+            color: #fff;
+        }
+        .card {
+            max-width: 420px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px 20px 28px;
+            color: #333;
+        }
+        h1 { margin: 0 0 8px; font-size: 20px; text-align: center; }
+        .sub { text-align: center; font-size: 13px; color: #888; margin-bottom: 20px; }
+        .order-brief { font-size: 14px; color: #555; line-height: 1.6; margin-bottom: 20px; padding: 12px; background: #f7f8fa; border-radius: 10px; }
+        .label { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 10px; }
+        .star-track {
+            position: relative;
+            height: 44px;
+            margin: 0 auto 6px;
+            max-width: 280px;
+            cursor: pointer;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .stars-row {
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-size: 38px;
+            line-height: 44px;
+            letter-spacing: 0.06em;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        .stars-gray { color: #e8e8e8; z-index: 1; }
+        .stars-gold-wrap {
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 2;
+            overflow: hidden;
+            height: 44px;
+            width: 0%;
+        }
+        .star-track.is-dragging .stars-gold-wrap { transition: none; }
+        .stars-gold { color: #faad14; }
+        .hint { text-align: center; font-size: 13px; color: #666; margin-bottom: 6px; }
+        .step-hint { text-align: center; font-size: 11px; color: #999; margin-bottom: 18px; }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            margin-top: 18px;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .err { color: #cf1322; text-align: center; font-size: 14px; margin-top: 12px; }
+        .back {
+            display: block;
+            text-align: center;
+            margin-top: 18px;
+            color: rgba(255,255,255,0.85);
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: underline;
+            border: none;
+            background: none;
+            width: 100%;
+            font-family: inherit;
+        }
+    </style>
+</head>
+<body>
+    <div class="card" id="main">
+        <h1>评价本次服务</h1>
+        <p class="sub">您的评价有助于其他用户选择顾问</p>
+        <div class="order-brief" id="brief">加载订单信息…</div>
+        <div class="label">总体评分（点星星或沿星星拖动，黄星为已选，精确到 0.1 分）</div>
+        <div class="star-track" id="starTrack" role="slider" aria-valuemin="1" aria-valuemax="5" aria-valuenow="4" aria-valuetext="4.0 分" tabindex="0" title="点击或沿星星左右拖动调节分数">
+            <div class="stars-row stars-gray" aria-hidden="true">★★★★★</div>
+            <div class="stars-gold-wrap" id="goldWrap">
+                <div class="stars-row stars-gold" aria-hidden="true">★★★★★</div>
+            </div>
+        </div>
+        <p class="hint" id="starHint">当前评分 4.0 / 5.0</p>
+        <p class="step-hint">在黄星区域内按住左右拖动可微调（步长 0.1）</p>
+        <div class="label">文字评价（选填）</div>
+        <textarea id="content" placeholder="说说本次服务体验…" maxlength="2000"></textarea>
+        <button type="button" class="btn" id="btnSubmit">提交评价</button>
+        <p class="err" id="err"></p>
+    </div>
+    <button type="button" class="back" id="btnBack">返回我的订单</button>
+    <script>
+        var API = window.location.origin;
+        var token = localStorage.getItem('token');
+        var params = new URLSearchParams(location.search);
+        var orderId = parseInt(params.get('orderId'), 10);
+        var returnPanel = params.get('returnPanel') || 'slot2';
+
+        var goldWrap = document.getElementById('goldWrap');
+        var starHint = document.getElementById('starHint');
+        var starTrack = document.getElementById('starTrack');
+        /** 十分位整数 10～50，表示 1.0～5.0 */
+        var ratingTenths = 40;
+
+        function goDashboardPanel(panel) {
+            var u = new URL('dashboard.html', location.href);
+            u.searchParams.set('panel', panel);
+            var href = u.href;
+            try {
+                if (window.top !== window) window.top.location.href = href;
+                else window.location.href = href;
+            } catch (e) {
+                window.location.href = href;
+            }
+        }
+
+        document.getElementById('btnBack').onclick = function () {
+            goDashboardPanel(returnPanel);
+        };
+
+        function applyRatingTenths(tenths) {
+            var t = Math.max(10, Math.min(50, Math.round(Number(tenths))));
+            ratingTenths = t;
+            var r = t / 10;
+            var pct = ((r - 1) / 4) * 100;
+            goldWrap.style.width = pct + '%';
+            starHint.textContent = '当前评分 ' + r.toFixed(1) + ' / 5.0';
+            starTrack.setAttribute('aria-valuenow', String(r));
+            starTrack.setAttribute('aria-valuetext', r.toFixed(1) + ' 分');
+            return r;
+        }
+
+        function clientXToTenths(clientX) {
+            var rect = starTrack.getBoundingClientRect();
+            var ratio = (clientX - rect.left) / rect.width;
+            ratio = Math.max(0, Math.min(1, ratio));
+            var r = 1 + ratio * 4;
+            return Math.round(r * 10);
+        }
+
+        starTrack.addEventListener('pointerdown', function (e) {
+            if (e.button != null && e.button !== 0) return;
+            starTrack.classList.add('is-dragging');
+            starTrack.setPointerCapture(e.pointerId);
+            applyRatingTenths(clientXToTenths(e.clientX));
+            function onMove(ev) {
+                applyRatingTenths(clientXToTenths(ev.clientX));
+            }
+            function onUp(ev) {
+                starTrack.classList.remove('is-dragging');
+                try {
+                    starTrack.releasePointerCapture(e.pointerId);
+                } catch (x) {}
+                starTrack.removeEventListener('pointermove', onMove);
+                starTrack.removeEventListener('pointerup', onUp);
+                starTrack.removeEventListener('pointercancel', onUp);
+            }
+            starTrack.addEventListener('pointermove', onMove);
+            starTrack.addEventListener('pointerup', onUp);
+            starTrack.addEventListener('pointercancel', onUp);
+        });
+
+        starTrack.addEventListener('keydown', function (e) {
+            var step = e.shiftKey ? 10 : 1;
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                applyRatingTenths(ratingTenths - step);
+            } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                applyRatingTenths(ratingTenths + step);
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                applyRatingTenths(10);
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                applyRatingTenths(50);
+            }
+        });
+
+        applyRatingTenths(40);
+
+        function getRole() {
+            try {
+                return JSON.parse(decodeURIComponent(escape(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))).role;
+            } catch (e) { return ''; }
+        }
+
+        if (!token || getRole() !== 'user') {
+            location.href = 'login.html';
+        } else if (!orderId) {
+            document.getElementById('brief').textContent = '缺少订单号';
+        } else {
+            (async function () {
+                try {
+                    var res = await fetch(API + '/api/order/detail/' + orderId, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    var j = await res.json();
+                    if (!res.ok) {
+                        document.getElementById('brief').textContent = j.message || '加载失败';
+                        return;
+                    }
+                    var d = j.data || {};
+                    if (d.status !== 'pending_review') {
+                        document.getElementById('brief').textContent =
+                            '当前订单状态为「' + (d.status || '--') + '」，无需评价或不可在此评价';
+                        document.getElementById('btnSubmit').style.display = 'none';
+                        return;
+                    }
+                    document.getElementById('brief').innerHTML =
+                        '<strong>订单 #' + d.orderId + '</strong><br>顾问：' +
+                        (d.consultantName || '顾问 #' + d.consultantId) +
+                        '<br>服务：' + (d.serviceType || '--');
+                } catch (e) {
+                    document.getElementById('brief').textContent = '网络错误';
+                }
+            })();
+
+            document.getElementById('btnSubmit').onclick = async function () {
+                var errEl = document.getElementById('err');
+                errEl.textContent = '';
+                var tenths = ratingTenths;
+                var r = tenths / 10;
+                if (tenths < 10 || tenths > 50) {
+                    errEl.textContent = '请选择有效评分';
+                    return;
+                }
+                var btn = document.getElementById('btnSubmit');
+                btn.disabled = true;
+                try {
+                    var res = await fetch(API + '/api/reviews/' + orderId, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        },
+                        body: JSON.stringify({
+                            rating: r,
+                            content: document.getElementById('content').value.trim() || null
+                        })
+                    });
+                    var data = await res.json().catch(function () { return {}; });
+                    if (!res.ok) {
+                        errEl.textContent = data.message || '提交失败';
+                        btn.disabled = false;
+                        return;
+                    }
+                    alert(data.message || '评价成功');
+                    goDashboardPanel(returnPanel);
+                } catch (e) {
+                    errEl.textContent = '网络错误';
+                    btn.disabled = false;
+                }
+            };
+        }
+    </script>
+</body>
+</html>

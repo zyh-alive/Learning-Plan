@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册业务</title>
+    <style>
+        * { box-sizing: border-box; }
+        html.embed-in-dashboard, html.embed-in-dashboard body {
+            height: 100%;
+            min-height: 100%;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+            background: linear-gradient(165deg, #1e3a5f 0%, #16213e 45%, #0f3460 100%);
+            padding: 20px 16px 100px;
+        }
+        /* 嵌在主页 iframe 内：避免 100vh 按整窗算留出大块空白，并隐藏「返回」（用底栏切换） */
+        body.embed-in-dashboard {
+            padding-bottom: 24px;
+        }
+        .top {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 22px;
+            max-width: 440px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .back {
+            color: rgba(255,255,255,0.88);
+            text-decoration: none;
+            font-size: 15px;
+        }
+        .top h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            flex: 1;
+        }
+        .hint {
+            max-width: 440px;
+            margin: 0 auto 18px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.55);
+            line-height: 1.5;
+        }
+        .list-wrap {
+            max-width: 440px;
+            margin: 0 auto;
+        }
+        .card {
+            background: rgba(255,255,255,0.97);
+            border-radius: 16px;
+            padding: 18px 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+        }
+        .card .type {
+            font-size: 17px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        .card .price {
+            font-size: 24px;
+            font-weight: 800;
+            color: #f5576c;
+            margin-top: 8px;
+        }
+        .card .price span { font-size: 14px; font-weight: 600; color: #888; margin-left: 4px; }
+        .card .desc {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+            line-height: 1.45;
+        }
+        .card .meta {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #aaa;
+        }
+        .card-head {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .card-head .type { flex: 1; }
+        .btn-del {
+            flex-shrink: 0;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #c0392b;
+            background: #fde8e6;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .btn-del:hover { background: #f5c4bf; }
+        .card .hint-tap { font-size: 11px; color: #999; margin-top: 6px; }
+        .empty-box {
+            text-align: center;
+            padding: 40px 20px;
+            color: rgba(255,255,255,0.65);
+            font-size: 15px;
+        }
+        .fab {
+            position: fixed;
+            right: 22px;
+            bottom: 28px;
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: #fff;
+            font-size: 32px;
+            line-height: 1;
+            cursor: pointer;
+            box-shadow: 0 10px 32px rgba(245, 87, 108, 0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 300;
+        }
+        .fab:hover { transform: scale(1.05); }
+        .overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 16px;
+        }
+        .overlay.show { display: flex; }
+        .sheet {
+            background: #fff;
+            border-radius: 20px 20px 0 0;
+            width: 100%;
+            max-width: 440px;
+            padding: 24px 20px 28px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .sheet h2 { margin: 0 0 20px; font-size: 18px; color: #333; text-align: center; }
+        .field { margin-bottom: 18px; }
+        .field label { display: block; font-size: 14px; color: #555; margin-bottom: 8px; font-weight: 600; }
+        .field select, .field input, .field textarea {
+            width: 100%;
+            padding: 12px 14px;
+            font-size: 16px;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+        }
+        .field textarea { min-height: 72px; resize: vertical; }
+        .sheet-actions { display: flex; gap: 12px; margin-top: 24px; }
+        .sheet-actions button {
+            flex: 1;
+            height: 48px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-cancel { background: #f0f0f0; color: #666; }
+        .btn-save {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+        }
+        .btn-save:disabled { opacity: 0.55; }
+        .err { color: #ffb4b4; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    <script>
+        if (new URLSearchParams(location.search).get('embed') === '1') {
+            document.documentElement.classList.add('embed-in-dashboard');
+            document.body.classList.add('embed-in-dashboard');
+        }
+    </script>
+    <script src="js/embed-parent-nav.js"></script>
+    <div class="top">
+        <a class="back" href="dashboard.html">← 返回</a>
+        <h1>注册业务</h1>
+    </div>
+    <p class="hint">为咨询、陪聊、代办三类业务分别设置金币价格。点击右下角「+」添加或修改某一类型的报价。</p>
+    <div class="list-wrap" id="listWrap"><p class="empty-box">加载中…</p></div>
+
+    <button type="button" class="fab" id="fab" title="添加/修改业务">+</button>
+
+    <div class="overlay" id="overlay">
+        <div class="sheet">
+            <h2>设置业务价格</h2>
+            <div class="field">
+                <label for="serviceType">业务类型</label>
+                <select id="serviceType">
+                    <option value="咨询">咨询</option>
+                    <option value="陪聊">陪聊</option>
+                    <option value="代办">代办</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="price">价格（金币）</label>
+                <input type="number" id="price" min="0.01" max="10000" step="0.01" placeholder="1～10000">
+            </div>
+            <div class="field">
+                <label for="description">服务说明（选填）</label>
+                <textarea id="description" placeholder="简要说明该业务内容"></textarea>
+            </div>
+            <div class="sheet-actions">
+                <button type="button" class="btn-cancel" id="btnClose">取消</button>
+                <button type="button" class="btn-save" id="btnSave">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var API = window.location.origin;
+        var token = localStorage.getItem('token');
+        var LIST_URL = API + '/api/consultant/service/service/list?mine=true';
+        var SAVE_URL = API + '/api/consultant/service/service';
+        function deleteUrl(serviceId) {
+            return API + '/api/consultant/service/service/' + encodeURIComponent(serviceId);
+        }
+
+        function getRole() {
+            try {
+                var b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                var p = JSON.parse(decodeURIComponent(escape(atob(b64))));
+                if (p.role) return p.role;
+            } catch (e) {}
+            return localStorage.getItem('role') || 'user';
+        }
+
+        if (!token) location.href = 'login.html';
+        else if (getRole() !== 'consultant') {
+            if (typeof window.__goDashboardFull === 'function') window.__goDashboardFull();
+            else location.href = 'dashboard.html';
+        }
+
+        function fmtTime(t) {
+            if (!t) return '';
+            try { return new Date(t).toLocaleString('zh-CN'); } catch (e) { return ''; }
+        }
+
+        function openSheet(prefill) {
+            document.getElementById('overlay').classList.add('show');
+            if (prefill) {
+                document.getElementById('serviceType').value = prefill.serviceType || '咨询';
+                document.getElementById('price').value = prefill.price != null ? prefill.price : '';
+                document.getElementById('description').value = prefill.description || '';
+            } else {
+                document.getElementById('serviceType').value = '咨询';
+                document.getElementById('price').value = '';
+                document.getElementById('description').value = '';
+            }
+        }
+
+        function closeSheet() {
+            document.getElementById('overlay').classList.remove('show');
+        }
+
+        document.getElementById('fab').addEventListener('click', function () { openSheet(null); });
+        document.getElementById('btnClose').addEventListener('click', closeSheet);
+        document.getElementById('overlay').addEventListener('click', function (e) {
+            if (e.target.id === 'overlay') closeSheet();
+        });
+
+        async function loadList() {
+            var wrap = document.getElementById('listWrap');
+            try {
+                var res = await fetch(LIST_URL, { headers: { 'Authorization': 'Bearer ' + token } });
+                var data = await res.json();
+                if (res.status === 401 || res.status === 403) {
+                    localStorage.removeItem('token');
+                    location.href = 'login.html';
+                    return;
+                }
+                if (!res.ok) {
+                    wrap.innerHTML = '<p class="err">' + (data.message || '加载失败') + '</p>';
+                    return;
+                }
+                var list = data.list || [];
+                if (list.length === 0) {
+                    wrap.innerHTML = '<p class="empty-box">暂无已注册业务<br>点击右下角 + 添加</p>';
+                    return;
+                }
+                window.__svcList = list;
+                function esc(t) {
+                    return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+                }
+                wrap.innerHTML = list.map(function (s, i) {
+                    var sid = s.serviceId != null ? s.serviceId : '';
+                    return '<div class="card" data-i="' + i + '">' +
+                        '<div class="card-head">' +
+                        '<div class="type">' + esc(s.serviceType) + '</div>' +
+                        '<button type="button" class="btn-del" data-sid="' + esc(String(sid)) + '" title="删除该业务">删除</button></div>' +
+                        '<div class="price">' + esc(String(s.price)) + '<span>金币</span></div>' +
+                        (s.description ? '<div class="desc">' + esc(s.description) + '</div>' : '') +
+                        '<div class="hint-tap">点击空白区域可修改价格</div>' +
+                        '<div class="meta">更新于 ' + esc(fmtTime(s.updatedAt)) + '</div></div>';
+                }).join('');
+                wrap.querySelectorAll('.card').forEach(function (el) {
+                    el.style.cursor = 'pointer';
+                    el.addEventListener('click', function (e) {
+                        if (e.target.closest && e.target.closest('.btn-del')) return;
+                        var s = window.__svcList[parseInt(el.getAttribute('data-i'), 10)];
+                        if (s) openSheet({ serviceType: s.serviceType, price: s.price, description: s.description || '' });
+                    });
+                });
+                wrap.querySelectorAll('.btn-del').forEach(function (btn) {
+                    btn.addEventListener('click', async function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var sid = btn.getAttribute('data-sid');
+                        if (!sid) return;
+                        var s = window.__svcList.find(function (x) { return String(x.serviceId) === String(sid); });
+                        var name = s ? s.serviceType : '该业务';
+                        if (!confirm('确定删除「' + name + '」？删除后用户将无法按此类型下单，可稍后重新添加。')) return;
+                        btn.disabled = true;
+                        try {
+                            var res = await fetch(deleteUrl(sid), {
+                                method: 'DELETE',
+                                headers: { 'Authorization': 'Bearer ' + token }
+                            });
+                            var data = await res.json();
+                            if (res.status === 401 || res.status === 403) {
+                                localStorage.removeItem('token');
+                                location.href = 'login.html';
+                                return;
+                            }
+                            if (!res.ok) {
+                                alert(data.message || '删除失败');
+                                btn.disabled = false;
+                                return;
+                            }
+                            loadList();
+                        } catch (err) {
+                            alert('网络错误');
+                            btn.disabled = false;
+                        }
+                    });
+                });
+            } catch (e) {
+                wrap.innerHTML = '<p class="err">网络错误</p>';
+            }
+        }
+
+        var saving = false;
+        document.getElementById('btnSave').addEventListener('click', async function () {
+            if (saving) return;
+            var serviceType = document.getElementById('serviceType').value;
+            var price = parseFloat(document.getElementById('price').value);
+            var description = document.getElementById('description').value.trim();
+            if (!price || price <= 0 || price > 10000) {
+                alert('请输入 1～10000 之间的价格');
+                return;
+            }
+            saving = true;
+            var btn = document.getElementById('btnSave');
+            btn.disabled = true;
+            btn.textContent = '保存中…';
+            try {
+                var res = await fetch(SAVE_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        serviceType: serviceType,
+                        price: price,
+                        description: description || null
+                    })
+                });
+                var data = await res.json();
+                if (res.status === 401 || res.status === 403) {
+                    localStorage.removeItem('token');
+                    location.href = 'login.html';
+                    return;
+                }
+                if (!res.ok) {
+                    alert(data.message || '保存失败');
+                    return;
+                }
+                alert('已保存：' + serviceType + '，价格 ' + price + ' 金币');
+                closeSheet();
+                loadList();
+            } catch (e) {
+                alert('网络错误');
+            } finally {
+                saving = false;
+                btn.disabled = false;
+                btn.textContent = '保存';
+            }
+        });
+
+        loadList();
+    </script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>充值金币</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", sans-serif;
+            background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            padding: 20px 16px 40px;
+        }
+        .back { color: rgba(255,255,255,0.85); text-decoration: none; font-size: 15px; display: inline-block; margin-bottom: 20px; }
+        .balance-hero {
+            border-radius: 20px;
+            padding: 24px;
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            text-align: center;
+            max-width: 400px;
+            margin: 0 auto 24px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+        }
+        .balance-hero .label { font-size: 13px; color: rgba(0,0,0,0.5); font-weight: 600; }
+        .balance-hero .amount { font-size: 36px; font-weight: 800; color: #1a1a1a; margin-top: 6px; }
+        .card {
+            max-width: 400px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+        }
+        .card h2 { margin: 0 0 16px; font-size: 18px; color: #333; }
+        .quick {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+        .quick button {
+            flex: 1;
+            min-width: 72px;
+            padding: 12px;
+            border: 2px solid #e8e8e8;
+            border-radius: 10px;
+            background: #fafafa;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            cursor: pointer;
+        }
+        .quick button:hover, .quick button.active { border-color: #667eea; background: #f0f0ff; color: #667eea; }
+        .field label { display: block; font-size: 14px; color: #666; margin-bottom: 8px; }
+        .field input {
+            width: 100%;
+            height: 48px;
+            padding: 0 14px;
+            font-size: 18px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+        }
+        .field input:focus { outline: none; border-color: #667eea; }
+        .hint { font-size: 12px; color: #999; margin-top: 8px; }
+        .submit {
+            width: 100%;
+            height: 50px;
+            margin-top: 24px;
+            font-size: 17px;
+            font-weight: 600;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            cursor: pointer;
+        }
+        .submit:disabled { opacity: 0.6; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <a class="back" href="coin-wallet.html">← 返回金币中心</a>
+    <div class="balance-hero">
+        <div class="label">当前余额</div>
+        <div class="amount" id="bal">--</div>
+    </div>
+    <div class="card">
+        <h2>充值金额</h2>
+        <div class="quick">
+            <button type="button" data-a="50">50</button>
+            <button type="button" data-a="100">100</button>
+            <button type="button" data-a="200">200</button>
+            <button type="button" data-a="500">500</button>
+        </div>
+        <div class="field">
+            <label for="amount">自定义金额（1～10000）</label>
+            <input type="number" id="amount" min="1" max="10000" step="1" placeholder="输入金币数量">
+        </div>
+        <p class="hint">充值将立即到账并记入充值记录</p>
+        <button type="button" class="submit" id="btn">确认充值</button>
+    </div>
+    <script>
+        var API = window.location.origin;
+        var token = localStorage.getItem('token');
+        function getRole() {
+            try {
+                var b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                var p = JSON.parse(decodeURIComponent(escape(atob(b64))));
+                if (p.role) return p.role;
+            } catch (e) {}
+            return 'user';
+        }
+        if (!token) location.href = 'login.html';
+        else if (getRole() !== 'user') location.href = 'dashboard.html';
+
+        function loadBal() {
+            fetch(API + '/api/recharge/balance', { headers: { 'Authorization': 'Bearer ' + token } })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    var c = d.data && d.data.coin;
+                    document.getElementById('bal').textContent = c != null ? c : '0';
+                });
+        }
+        loadBal();
+
+        document.querySelectorAll('.quick button').forEach(function (b) {
+            b.addEventListener('click', function () {
+                document.querySelectorAll('.quick button').forEach(function (x) { x.classList.remove('active'); });
+                b.classList.add('active');
+                document.getElementById('amount').value = b.getAttribute('data-a');
+            });
+        });
+
+        var submitting = false;
+        document.getElementById('btn').addEventListener('click', async function () {
+            if (submitting) return;
+            var n = parseFloat(document.getElementById('amount').value);
+            if (!n || n <= 0 || n > 10000) {
+                alert('请输入 1～10000 之间的金额');
+                return;
+            }
+            submitting = true;
+            var btn = document.getElementById('btn');
+            btn.disabled = true;
+            btn.textContent = '充值中…';
+            try {
+                var res = await fetch(API + '/api/recharge', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({ amount: n })
+                });
+                var data = await res.json();
+                if (res.status === 401 || res.status === 403) {
+                    localStorage.removeItem('token');
+                    location.href = 'login.html';
+                    return;
+                }
+                if (!res.ok) {
+                    alert(data.message || '充值失败');
+                    return;
+                }
+                alert('充值成功！当前余额：' + (data.data && data.data.newBalance));
+                document.getElementById('bal').textContent = data.data && data.data.newBalance != null ? data.data.newBalance : '';
+                document.getElementById('amount').value = '';
+                document.querySelectorAll('.quick button').forEach(function (x) { x.classList.remove('active'); });
+            } catch (e) {
+                alert('网络错误');
+            } finally {
+                submitting = false;
+                btn.disabled = false;
+                btn.textContent = '确认充值';
+            }
+        });
+    </script>
+</body>
+</html>

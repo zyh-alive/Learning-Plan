@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>支付加急费</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(165deg, #1a1a2e, #16213e);
+            padding: 24px 16px;
+            color: #fff;
+        }
+        .card {
+            max-width: 400px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 16px;
+            padding: 28px 22px;
+            color: #333;
+        }
+        h1 { margin: 0 0 8px; font-size: 20px; text-align: center; }
+        .sub { text-align: center; font-size: 13px; color: #888; margin-bottom: 16px; }
+        .price { font-size: 30px; font-weight: 800; color: #f5222d; text-align: center; margin: 14px 0; }
+        .price span { font-size: 14px; color: #999; font-weight: 600; }
+        .bal { text-align: center; font-size: 14px; color: #666; margin-bottom: 18px; }
+        .row { font-size: 14px; margin-bottom: 8px; color: #555; }
+        .actions { display: flex; flex-direction: column; gap: 12px; margin-top: 22px; }
+        .actions button, .actions a {
+            display: block;
+            text-align: center;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-pay { background: linear-gradient(135deg, #eb2f96, #f5222d); color: #fff; }
+        .btn-pay:disabled { opacity: 0.5; }
+        .btn-cancel { background: #f5f5f5; color: #666; }
+        .err { color: #cf1322; text-align: center; font-size: 14px; margin-top: 12px; }
+    </style>
+</head>
+<body>
+    <div class="card" id="main">
+        <h1>确认支付加急费</h1>
+        <p class="sub">冻结记录原因：<strong>加急付款</strong>；加急超时未接单将按「加急过期」退回加急费</p>
+        <div id="box"></div>
+    </div>
+    <script>
+        var API = window.location.origin;
+        var token = localStorage.getItem('token');
+        var payParams = new URLSearchParams(location.search);
+        var id = parseInt(payParams.get('id'), 10);
+        var returnPanel = payParams.get('returnPanel') || 'slot2';
+        var embed = payParams.get('embed') === '1';
+
+        function goOrders() {
+            var u = 'my-orders.html?returnPanel=' + encodeURIComponent(returnPanel);
+            if (embed) u += '&embed=1';
+            try {
+                if (window.top !== window) window.top.location.href = u;
+                else location.href = u;
+            } catch (e) { location.href = u; }
+        }
+
+        function getRole() {
+            try {
+                return JSON.parse(decodeURIComponent(escape(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))).role;
+            } catch (e) { return ''; }
+        }
+
+        if (!token || getRole() !== 'user') location.href = 'login.html';
+        else if (!id) document.getElementById('box').innerHTML = '<p class="err">缺少订单号</p>';
+        else {
+            (async function () {
+                var box = document.getElementById('box');
+                var draft = {};
+                try {
+                    draft = JSON.parse(sessionStorage.getItem('orderRushDraft_' + id) || '{}');
+                } catch (e) {}
+
+                var res = await fetch(API + '/api/order/' + id + '/rush/preview', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                var j = await res.json();
+                if (!res.ok) {
+                    box.innerHTML = '<p class="err">' + (j.message || '无法加载') + '</p>';
+                    return;
+                }
+                var d = j.data || {};
+                var fee = Number(d.rushFee) || 0;
+                var dur = draft.rushDurationSeconds != null ? Number(draft.rushDurationSeconds) : (d.rushDurationSeconds || 3600);
+
+                var uid = (function () {
+                    try {
+                        return JSON.parse(decodeURIComponent(escape(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))).userId;
+                    } catch (e) { return null; }
+                })();
+                var ur = await fetch(API + '/auth/users/' + uid, { headers: { 'Authorization': 'Bearer ' + token } });
+                var uj = await ur.json();
+                var coin = (ur.ok && uj.user && uj.user.coin != null) ? Number(uj.user.coin) : 0;
+
+                box.innerHTML =
+                    '<div class="row">订单 #' + id + '</div>' +
+                    '<div class="price">' + fee.toFixed(2) + '<span> 金币（加急费）</span></div>' +
+                    '<div class="bal">当前余额：<strong>' + coin + '</strong> 金币</div>' +
+                    '<div class="actions">' +
+                    '<button type="button" class="btn-pay" id="btnPay">确认支付加急费</button>' +
+                    '<a class="btn-cancel" href="order-rush.html?id=' + id + '&returnPanel=' + encodeURIComponent(returnPanel) + (embed ? '&embed=1' : '') + '">上一步</a></div>' +
+                    '<p class="err" id="err"></p>';
+
+                document.getElementById('btnPay').onclick = async function () {
+                    var btn = this;
+                    var errEl = document.getElementById('err');
+                    errEl.textContent = '';
+                    btn.disabled = true;
+                    try {
+                        var payRes = await fetch(API + '/api/order/' + id + '/rush/pay', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': 'Bearer ' + token
+                            },
+                            body: JSON.stringify({
+                                rushDescription: draft.rushDescription || '',
+                                rushDurationSeconds: dur
+                            })
+                        });
+                        var pj = await payRes.json();
+                        if (!payRes.ok) {
+                            errEl.textContent = pj.message || '支付失败';
+                            btn.disabled = false;
+                            return;
+                        }
+                        try { sessionStorage.removeItem('orderRushDraft_' + id); } catch (e2) {}
+                        alert('加急付款成功');
+                        goOrders();
+                    } catch (e) {
+                        errEl.textContent = '网络错误';
+                        btn.disabled = false;
+                    }
+                };
+            })();
+        }
+    </script>
+</body>
+</html>

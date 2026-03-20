@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单加急</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(165deg, #1a1a2e, #16213e);
+            padding: 24px 16px;
+            color: #fff;
+        }
+        .card {
+            max-width: 420px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 16px;
+            padding: 26px 20px;
+            color: #333;
+        }
+        h1 { margin: 0 0 6px; font-size: 20px; text-align: center; }
+        .sub { text-align: center; font-size: 13px; color: #888; margin-bottom: 18px; }
+        label { display: block; font-size: 13px; font-weight: 600; color: #555; margin: 14px 0 6px; }
+        textarea {
+            width: 100%;
+            min-height: 88px;
+            padding: 10px 12px;
+            border: 1px solid #e8e8e8;
+            border-radius: 10px;
+            font-size: 14px;
+            resize: vertical;
+        }
+        .info { background: #fff7e6; border: 1px solid #ffd591; border-radius: 10px; padding: 12px 14px; font-size: 14px; color: #ad6800; margin-top: 12px; }
+        .info strong { color: #874d00; }
+        .dur { font-size: 15px; color: #333; margin-top: 8px; }
+        .actions { margin-top: 22px; display: flex; flex-direction: column; gap: 10px; }
+        .actions a, .actions button {
+            display: block;
+            text-align: center;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-next {
+            background: linear-gradient(135deg, #eb2f96, #f5222d);
+            color: #fff;
+        }
+        .btn-next:disabled { opacity: 0.5; }
+        .btn-back { background: #f5f5f5; color: #666; }
+        .err { color: #cf1322; text-align: center; font-size: 14px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="card" id="main">
+        <h1>订单加急</h1>
+        <p class="sub">加急费为订单金额的一半；支付后进入「加急待接单」，1 小时内优先展示给顾问</p>
+        <div id="box"><p style="text-align:center;color:#999">加载中…</p></div>
+    </div>
+    <script>
+        var API = window.location.origin;
+        var token = localStorage.getItem('token');
+        var params = new URLSearchParams(location.search);
+        var id = parseInt(params.get('id'), 10);
+        var isEmbed = params.get('embed') === '1';
+        var returnPanel = params.get('returnPanel') || 'slot2';
+
+        function getRole() {
+            try {
+                return JSON.parse(decodeURIComponent(escape(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))))).role;
+            } catch (e) { return ''; }
+        }
+
+        if (!token || getRole() !== 'user') {
+            location.href = 'login.html';
+        } else if (!id) {
+            document.getElementById('box').innerHTML = '<p class="err">缺少订单号</p>';
+        } else {
+            (async function () {
+                var box = document.getElementById('box');
+                try {
+                    var res = await fetch(API + '/api/order/' + id + '/rush/preview', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    var j = await res.json();
+                    if (!res.ok) {
+                        box.innerHTML = '<p class="err">' + (j.message || '无法加急') + '</p>';
+                        return;
+                    }
+                    var d = j.data || {};
+                    var fee = Number(d.rushFee) || 0;
+                    var dur = d.rushDurationSeconds != null ? Number(d.rushDurationSeconds) : 3600;
+                    var durMin = Math.floor(dur / 60);
+                    box.innerHTML =
+                        '<label for="rushDesc">加急描述（选填，顾问可见）</label>' +
+                        '<textarea id="rushDesc" maxlength="500" placeholder="如：希望尽快安排电话沟通、今日内回复等">' +
+                        (d.rushDescription ? String(d.rushDescription).replace(/</g, '&lt;') : '') + '</textarea>' +
+                        '<div class="info">' +
+                        '<div><strong>加急费用：</strong>' + fee.toFixed(2) + ' 金币（订单金额的一半，由系统计算）</div>' +
+                        '<div class="dur"><strong>加急时长：</strong>' + durMin + ' 分钟（接单窗口，超时仅退加急费）</div>' +
+                        '<div class="dur" style="margin-top:8px;color:#666;font-size:13px">订单本金仍冻结；加急超时后订单恢复普通待接单，整单截止为下单后 24 小时。</div>' +
+                        '</div>' +
+                        '<div class="actions">' +
+                        '<button type="button" class="btn-next" id="btnNext">去支付加急费</button>' +
+                        '<a class="btn-back" id="rushBackOrders" href="#">返回我的订单</a>' +
+                        '</div>' +
+                        '<p class="err" id="err"></p>';
+
+                    (function () {
+                        var backHref = 'my-orders.html?returnPanel=' + encodeURIComponent(returnPanel);
+                        if (isEmbed) backHref += '&embed=1';
+                        var backEl = document.getElementById('rushBackOrders');
+                        if (backEl) backEl.href = backHref;
+                    })();
+
+                    document.getElementById('btnNext').onclick = function () {
+                        var desc = document.getElementById('rushDesc').value.trim();
+                        try {
+                            sessionStorage.setItem('orderRushDraft_' + id, JSON.stringify({
+                                rushDescription: desc,
+                                rushDurationSeconds: dur
+                            }));
+                        } catch (e) {}
+                        var payUrl = 'order-rush-pay.html?id=' + id + '&returnPanel=' + encodeURIComponent(returnPanel);
+                        if (isEmbed) payUrl += '&embed=1';
+                        location.href = payUrl;
+                    };
+                } catch (e) {
+                    box.innerHTML = '<p class="err">网络错误</p>';
+                }
+            })();
+        }
+    </script>
+</body>
+</html>

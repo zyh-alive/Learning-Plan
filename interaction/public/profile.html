@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人资料</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: linear-gradient(180deg, #e8eef5 0%, #f0f4f8 35%, #e4eaf2 100%);
+            padding: 20px 16px 40px;
+        }
+        .page { max-width: 420px; margin: 0 auto; }
+        .greeting {
+            text-align: center;
+            font-size: 15px;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 20px;
+            letter-spacing: 0.06em;
+        }
+        .profile-head {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .avatar {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 12px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.35);
+        }
+        .profile-head h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 700;
+            color: #1a202c;
+        }
+        /* 客户端：金币独立入口 */
+        .coin-wallet {
+            display: block;
+            text-decoration: none;
+            border-radius: 18px;
+            padding: 22px 20px;
+            background: linear-gradient(125deg, #f6d365 0%, #fda085 50%, #fbc2eb 100%);
+            box-shadow: 0 12px 36px rgba(253, 160, 133, 0.35);
+            margin-bottom: 20px;
+            color: #1a1a1a;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .coin-wallet:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 44px rgba(253, 160, 133, 0.45);
+        }
+        .coin-wallet.hidden { display: none; }
+        .coin-wallet .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .coin-wallet .label {
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(0,0,0,0.5);
+            letter-spacing: 0.1em;
+        }
+        .coin-wallet .arrow { font-size: 22px; color: rgba(0,0,0,0.35); font-weight: 300; }
+        .coin-wallet .balance {
+            font-size: 36px;
+            font-weight: 800;
+            margin-top: 6px;
+            letter-spacing: -0.02em;
+        }
+        .coin-wallet .sub { font-size: 13px; color: rgba(0,0,0,0.45); margin-top: 4px; }
+        .section {
+            background: #fff;
+            border-radius: 16px;
+            padding: 8px 0 4px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+        .section-title {
+            padding: 14px 20px 10px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #a0aec0;
+            letter-spacing: 0.12em;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 15px;
+        }
+        .row:last-child { border-bottom: none; }
+        .label { color: #718096; }
+        .val { color: #2d3748; font-weight: 500; text-align: right; max-width: 58%; word-break: break-all; }
+        .val.empty { color: #cbd5e0; font-weight: 400; }
+        .actions { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 12px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+        }
+        .btn-primary:hover { opacity: 0.95; }
+        .btn-outline {
+            background: #fff;
+            color: #667eea;
+            border: 2px solid #e9e6ff;
+        }
+        .btn-outline:hover { background: #f7f5ff; }
+        .to-settings {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .to-settings:hover { text-decoration: underline; }
+        body.embed .to-settings,
+        body.embed .greeting,
+        body.embed .btn-back-dash { display: none; }
+        body.embed { padding-top: 12px; padding-bottom: 16px; }
+        .list.hidden { display: none; }
+
+        /* 顾问端：与客户端「顾问主页」同系视觉 */
+        body.consultant-theme {
+            background: linear-gradient(165deg, #1a1a2e 0%, #16213e 45%, #0f3460 100%);
+            padding-bottom: 48px;
+        }
+        body.consultant-theme .greeting {
+            color: rgba(255,255,255,0.88);
+        }
+        body.consultant-theme .profile-head,
+        body.consultant-theme .coin-wallet { display: none !important; }
+        body.consultant-theme .btn-primary.btn-back-dash {
+            background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.08));
+            border: 1px solid rgba(255,255,255,0.25);
+            box-shadow: none;
+        }
+        body.consultant-theme .to-settings { color: #c4b5fd; }
+
+        .cp-outer { max-width: 420px; margin: 0 auto 18px; }
+        .cp-card {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+            padding: 22px 20px 20px;
+            overflow: hidden;
+        }
+        .cp-hero {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid #f0f0f0;
+            margin-bottom: 16px;
+        }
+        .cp-hero .avatar {
+            width: 76px;
+            height: 76px;
+            margin: 0;
+            flex-shrink: 0;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        }
+        .cp-hero-main { flex: 1; min-width: 0; }
+        .cp-hero-main h2 {
+            margin: 0 0 8px;
+            font-size: 19px;
+            font-weight: 700;
+            color: #1a1a1a;
+            text-align: left;
+        }
+        .cp-rating-row {
+            display: flex;
+            flex-wrap: wrap;
+            flex-direction: row;
+            align-items: center;
+            gap: 6px 10px;
+        }
+        .cp-rating-row .cp-score-wrap {
+            display: inline-flex;
+            align-items: baseline;
+            flex-shrink: 0;
+            gap: 2px;
+        }
+        .cp-star-track {
+            position: relative;
+            display: inline-block;
+            height: 26px;
+            width: 108px;
+            flex-shrink: 0;
+            margin-left: 2px;
+            vertical-align: middle;
+        }
+        .cp-star-g, .cp-star-y {
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-size: 20px;
+            line-height: 26px;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            pointer-events: none;
+            font-family: "Apple Color Emoji", "Segoe UI Symbol", "Noto Sans Symbols 2", Arial, sans-serif;
+        }
+        .cp-star-g {
+            color: #94a3b8;
+            z-index: 1;
+            opacity: 1;
+            -webkit-text-fill-color: #94a3b8;
+        }
+        .cp-star-yw {
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 2;
+            overflow: hidden;
+            height: 26px;
+            width: 0;
+            max-width: 108px;
+        }
+        .cp-star-y {
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-size: 20px;
+            line-height: 26px;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            color: #d48806;
+            opacity: 1;
+            -webkit-text-fill-color: #d48806;
+            text-shadow: 0 0 0 #b45309, 0 1px 2px rgba(180, 83, 9, 0.35);
+        }
+        .cp-rating-num { font-size: 20px; font-weight: 800; color: #1a1a1a; }
+        .cp-rating-num.muted { font-size: 14px; font-weight: 600; color: #999; }
+        .cp-meta { font-size: 12px; color: #888; margin-top: 4px; width: 100%; }
+
+        .cp-stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .cp-stat-tile {
+            display: block;
+            text-decoration: none;
+            color: inherit;
+            background: linear-gradient(180deg, #fafbff 0%, #f5f7fa 100%);
+            border: 1px solid #eef0f4;
+            border-radius: 14px;
+            padding: 14px 12px;
+            text-align: center;
+            transition: transform 0.12s, box-shadow 0.12s;
+        }
+        .cp-stat-tile:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.15);
+        }
+        .cp-stat-tile .n {
+            font-size: 22px;
+            font-weight: 800;
+            color: #1890ff;
+            display: block;
+        }
+        .cp-stat-tile .lbl {
+            font-size: 12px;
+            color: #888;
+            margin-top: 6px;
+            font-weight: 600;
+        }
+        .cp-stat-tile .hint {
+            font-size: 10px;
+            color: #bbb;
+            margin-top: 4px;
+        }
+
+        body.consultant-theme .cp-more.section {
+            background: rgba(255,255,255,0.96);
+            box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+        }
+
+        .cp-coin-banner {
+            margin-top: 14px;
+            padding: 16px 18px;
+            border-radius: 16px;
+            background: linear-gradient(125deg, #fffbe6 0%, #ffe58f 35%, #ffd666 100%);
+            border: 1px solid rgba(212, 136, 6, 0.28);
+            box-shadow: 0 6px 20px rgba(250, 173, 20, 0.18);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .cp-coin-banner .coin-lbl {
+            font-size: 12px;
+            font-weight: 700;
+            color: rgba(0,0,0,0.45);
+            letter-spacing: 0.12em;
+        }
+        .cp-coin-banner .coin-val {
+            font-size: 28px;
+            font-weight: 900;
+            color: #ad6800;
+            letter-spacing: -0.02em;
+        }
+        .cp-coin-banner .coin-icon { font-size: 32px; line-height: 1; opacity: 0.9; }
+    </style>
+</head>
+<body>
+    <script src="js/embed-parent-nav.js"></script>
+    <div class="page">
+        <p class="greeting" id="greeting">尊敬的客户您好</p>
+        <div class="profile-head">
+            <div class="avatar" id="avatarIcon">👤</div>
+            <h1>个人资料</h1>
+        </div>
+
+        <a href="coin-wallet.html" class="coin-wallet hidden" id="coinWallet">
+            <div class="top">
+                <span class="label">金币余额</span>
+                <span class="arrow">›</span>
+            </div>
+            <div class="balance" id="walletCoin">0</div>
+            <div class="sub">充值 · 查看记录 ›</div>
+        </a>
+
+        <div class="list hidden" id="clientList">
+            <div class="section">
+                <div class="section-title">基本信息</div>
+                <div class="row"><span class="label">手机号</span><span class="val" id="c_phone">加载中…</span></div>
+                <div class="row"><span class="label">姓名</span><span class="val" id="c_name">--</span></div>
+                <div class="row"><span class="label">生日</span><span class="val" id="c_birth">--</span></div>
+                <div class="row"><span class="label">性别</span><span class="val" id="c_gender">--</span></div>
+                <div class="row"><span class="label">简介</span><span class="val" id="c_bio">--</span></div>
+                <div class="row"><span class="label">关于</span><span class="val" id="c_about">--</span></div>
+            </div>
+        </div>
+
+        <div class="list hidden" id="consultantList">
+            <div class="cp-outer">
+                <div class="cp-card">
+                    <div class="cp-hero">
+                        <div class="avatar" id="cp_avatar">💼</div>
+                        <div class="cp-hero-main">
+                            <h2 id="cp_name">--</h2>
+                            <div class="cp-rating-row" id="cp_rating_row">
+                                <span id="cp_rating_text"></span>
+                                <span id="cp_stars_host"></span>
+                            </div>
+                            <p class="cp-meta" id="cp_review_meta"></p>
+                        </div>
+                    </div>
+                    <div class="cp-stat-grid">
+                        <a class="cp-stat-tile" id="cp_link_orders" href="#">
+                            <span class="n" id="cp_tile_orders">0</span>
+                            <span class="lbl">总订单</span>
+                            <span class="hint">点按查看订单与需求</span>
+                        </a>
+                        <a class="cp-stat-tile" id="cp_link_reviews" href="#">
+                            <span class="n" id="cp_tile_reviews">0</span>
+                            <span class="lbl">评价数</span>
+                            <span class="hint">点按只看已评价</span>
+                        </a>
+                    </div>
+                    <div class="cp-coin-banner">
+                        <div>
+                            <div class="coin-lbl">金币余额</div>
+                            <div class="coin-val" id="cp_coin_val">0</div>
+                        </div>
+                        <div class="coin-icon" aria-hidden="true">🪙</div>
+                    </div>
+                </div>
+            </div>
+            <div class="section cp-more">
+                <div class="section-title">账号信息</div>
+                <div class="row"><span class="label">手机号</span><span class="val" id="k_phone">加载中…</span></div>
+                <div class="row"><span class="label">工作状态</span><span class="val" id="k_workStatus">--</span></div>
+                <div class="row"><span class="label">个性签名</span><span class="val" id="k_signature">--</span></div>
+                <div class="row"><span class="label">工作时长</span><span class="val" id="k_workDuration">--</span></div>
+                <div class="row"><span class="label">经历说明</span><span class="val" id="k_experience">--</span></div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button type="button" class="btn btn-primary btn-back-dash" id="btnBackDash">返回主页</button>
+        </div>
+        <a href="settings.html" class="to-settings" id="toSettings">⚙️ 打开设置（编辑资料、修改密码、退出登录）</a>
+    </div>
+    <script>
+        var API_BASE = window.location.origin;
+        var token = localStorage.getItem('token');
+        var genderText = { '0': '未知', '1': '男', '2': '女', '3': '其他' };
+        var workStatusText = { '0': '离线', '1': '空闲', '2': '忙碌' };
+        function cpStarHtml(ratingVal, hasReviews) {
+            var r = hasReviews ? Math.max(0, Math.min(5, Number(ratingVal) || 0)) : 0;
+            var pct = (r / 5) * 100;
+            return '<span class="cp-star-track" aria-hidden="true">' +
+                '<span class="cp-star-g">★★★★★</span>' +
+                '<span class="cp-star-yw" style="width:' + pct + '%"><span class="cp-star-y">★★★★★</span></span></span>';
+        }
+        function getRole() {
+            try {
+                var b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+                var json = decodeURIComponent(escape(atob(b64)));
+                var payload = JSON.parse(json);
+                if (payload.role) return payload.role;
+            } catch (e) {}
+            return localStorage.getItem('role') || 'user';
+        }
+        (function () {
+            if (new URLSearchParams(window.location.search).get('embed') === '1') {
+                document.body.classList.add('embed');
+            }
+        })();
+
+        if (!token) {
+            window.location.href = 'login.html';
+        } else {
+            var role = getRole();
+            document.getElementById('greeting').textContent = role === 'consultant' ? '尊敬的顾问您好' : '尊敬的客户您好';
+            document.getElementById('avatarIcon').textContent = role === 'consultant' ? '💼' : '👤';
+            document.body.classList.toggle('consultant-theme', role === 'consultant');
+            document.getElementById('clientList').classList.toggle('hidden', role === 'consultant');
+            document.getElementById('consultantList').classList.toggle('hidden', role !== 'consultant');
+            if (role === 'user') {
+                document.getElementById('coinWallet').classList.remove('hidden');
+            }
+            (async function () {
+                try {
+                    var profileRes = await fetch(API_BASE + '/auth/profile', {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    var profileData = await profileRes.json();
+                    if (!profileRes.ok) {
+                        if (profileRes.status === 401 || profileRes.status === 403) {
+                            localStorage.removeItem('token');
+                            window.location.href = 'login.html?expired=1';
+                            return;
+                        }
+                        alert(profileData.message || '获取资料失败');
+                        return;
+                    }
+                    var uidKey = role === 'consultant' ? 'consultantId' : 'userId';
+                    var targetId = profileData.user[uidKey];
+                    if (targetId == null) {
+                        alert('无法解析用户 ID');
+                        return;
+                    }
+                    var userRes = await fetch(API_BASE + '/auth/users/' + targetId, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    var userData = await userRes.json();
+                    if (!userRes.ok) {
+                        if (userRes.status === 401 || userRes.status === 403) {
+                            localStorage.removeItem('token');
+                            window.location.href = 'login.html?expired=1';
+                            return;
+                        }
+                        alert(userData.message || '获取用户信息失败');
+                        return;
+                    }
+                    var u = userData.user;
+                    if (role === 'consultant') {
+                        document.getElementById('k_phone').textContent = u.phone || '--';
+                        document.getElementById('k_workStatus').textContent = workStatusText[String(u.workStatus)] != null ? workStatusText[String(u.workStatus)] : (u.workStatus != null ? String(u.workStatus) : '--');
+                        function fillTextRow(id, v) {
+                            var el = document.getElementById(id);
+                            var s = v != null && String(v).trim() ? String(v).trim() : '';
+                            el.textContent = s || '未填写';
+                            el.classList.toggle('empty', !s);
+                        }
+                        fillTextRow('k_signature', u.signature);
+                        fillTextRow('k_workDuration', u.workDuration);
+                        fillTextRow('k_experience', u.experience);
+
+                        document.getElementById('cp_coin_val').textContent = u.coin != null ? String(u.coin) : '0';
+
+                        var cname = (u.name && String(u.name).trim()) ? u.name.trim() : '顾问';
+                        var revN = u.reviewCount != null ? Number(u.reviewCount) : 0;
+                        var totN = u.totalOrders != null ? Number(u.totalOrders) : 0;
+                        var hasRev = revN > 0;
+                        var rnum = hasRev ? Number(u.rating) : 0;
+
+                        document.getElementById('cp_name').textContent = cname;
+                        document.getElementById('cp_rating_text').innerHTML = hasRev
+                            ? '<span class="cp-score-wrap"><span class="cp-rating-num">' + rnum.toFixed(2) + '</span><span style="font-size:12px;color:#888;font-weight:600"> / 5</span></span>'
+                            : '<span class="cp-rating-num muted">暂无评分</span>';
+                        document.getElementById('cp_stars_host').innerHTML = hasRev ? cpStarHtml(rnum, true) : '';
+                        document.getElementById('cp_review_meta').textContent = hasRev
+                            ? ('共 ' + revN + ' 条客户评价')
+                            : '尚无评价，完成服务并等待客户评价后将显示';
+
+                        document.getElementById('cp_tile_orders').textContent = String(totN);
+                        document.getElementById('cp_tile_reviews').textContent = String(revN);
+
+                        var emb = document.body.classList.contains('embed') ? '?embed=1&' : '?';
+                        document.getElementById('cp_link_orders').href =
+                            'consultant-orders-feed.html' + emb + 'filter=all';
+                        document.getElementById('cp_link_reviews').href =
+                            'consultant-orders-feed.html' + emb + 'filter=reviews_only';
+                    } else {
+                        document.getElementById('walletCoin').textContent = u.coin != null ? u.coin : '0';
+                        document.getElementById('c_phone').textContent = u.phone || '--';
+                        document.getElementById('c_name').textContent = u.name || '未填写';
+                        document.getElementById('c_name').classList.toggle('empty', !u.name);
+                        document.getElementById('c_birth').textContent = u.birth || '未填写';
+                        document.getElementById('c_birth').classList.toggle('empty', !u.birth);
+                        document.getElementById('c_gender').textContent = u.gender != null ? (genderText[String(u.gender)] || u.gender) : '未填写';
+                        document.getElementById('c_bio').textContent = u.bio || '未填写';
+                        document.getElementById('c_bio').classList.toggle('empty', !u.bio);
+                        document.getElementById('c_about').textContent = u.about || '未填写';
+                        document.getElementById('c_about').classList.toggle('empty', !u.about);
+                    }
+                } catch (err) {
+                    alert('网络错误：' + (err.message || '请检查后端是否运行'));
+                }
+            })();
+        }
+
+        document.getElementById('btnBackDash').addEventListener('click', function () {
+            if (typeof window.__goDashboard === 'function') window.__goDashboard('messages');
+            else window.location.href = 'dashboard.html';
+        });
+    </script>
+</body>
+</html>
